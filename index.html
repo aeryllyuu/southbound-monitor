@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Southbound Monitor — Sector Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#f6f7f9;color:#1a1d21;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 22px 60px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:#6b7280;font-size:12.5px;margin-bottom:12px}
+.note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:9px 13px;font-size:12px;margin-bottom:16px}
+.controls{display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.ctrl{display:flex;flex-direction:column;gap:5px}
+.ctrl label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600}
+.seg{display:inline-flex;background:#eef0f3;border-radius:8px;padding:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;border-radius:6px;font-size:13px;color:#4b5563;cursor:pointer;font-weight:500}
+.seg button.on{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+select{font-size:13px;padding:6px 10px;border:1px solid #d5d9df;border-radius:8px;background:#fff;color:#111}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:13px 15px}
+.kpi .t{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600}
+.kpi .v{font-size:21px;font-weight:700;margin-top:4px}
+.kpi .d{font-size:12px;margin-top:2px;color:#6b7280}
+.pos{color:#0f9d58}.neg{color:#d93025}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:15px 16px;margin-bottom:16px}
+.card h2{font-size:14px;margin:0 0 3px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card .cap{font-size:12px;color:#6b7280;margin:0 0 12px}
+.grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:16px}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chartbox{position:relative;height:350px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:6px 8px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;font-size:11px}
+.heatwrap{overflow-x:auto}
+.htab td:first-child{position:sticky;left:0;background:#fff}
+.htab td{color:#111;font-variant-numeric:tabular-nums;border-radius:3px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#4b5563;margin-top:10px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.foot{font-size:11.5px;color:#9097a1;margin-top:20px;line-height:1.6}
+.rank td,.mv td{border-bottom:1px solid #f1f2f4;font-variant-numeric:tabular-nums}
+.bar{display:inline-block;height:9px;border-radius:2px;background:#3b82f6;vertical-align:middle}
+.tag{font-size:10.5px;color:#6b7280}
+.mvh{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600;margin:2px 0 6px}
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:820px){.grid2,.grid2b,.dd{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
+.tabs button{border:0;background:transparent;padding:9px 16px;font-size:14px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:#111827;border-bottom-color:#4285f4}
+.mnav{display:flex;align-items:center;gap:8px;font-weight:400}
+.mnav button.nb{border:1px solid #d5d9df;background:#fff;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:#374151}
+.wrapcard{background:linear-gradient(180deg,#f8fafc,#fff);border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.wrapcard .big{font-size:16px;font-weight:600;margin-bottom:8px}
+.wrapcard p{margin:0 0 4px;font-size:13.5px;line-height:1.6;color:#374151}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0 2px}
+.stat .b{background:#fff;border:1px solid #eef0f3;border-radius:10px;padding:9px 12px}
+.stat .b .t{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600}
+.stat .b .v{font-size:18px;font-weight:700;margin-top:2px}
+@media(max-width:820px){.stat{grid-template-columns:repeat(2,1fr)}}
+.htab td.cell{cursor:pointer}
+.htab td.cell:hover{outline:2px solid #1a1d21;outline-offset:-2px}
+.rank tr.clk:hover,.clk:hover{background:#f3f6ff}
+.ov{position:fixed;inset:0;background:rgba(15,20,28,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.ov.show{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:720px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal .mh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px 6px}
+.modal .mh h3{margin:0;font-size:17px}
+.modal .mh .s{font-size:12.5px;color:#6b7280;margin-top:3px}
+.modal .x{border:0;background:#eef0f3;border-radius:8px;width:30px;height:30px;font-size:16px;cursor:pointer;color:#374151;flex:none}
+.modal .body{padding:6px 18px 18px}
+.modal .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.modal .colh{font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:6px 0 6px}
+.modal .colh.up{color:#0f9d58}.modal .colh.dn{color:#d93025}
+@media(max-width:640px){.modal .two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Southbound Monitor — Sector Dashboard</h1>
+  <div class="sub">Hong Kong Stock Connect southbound holdings · monthly, Jan 2025 – Jun 2026 · aggregated from the <b>Monitor</b> tab (107 stocks) · source: CCASS via webb-site</div>
+  <div class="note" id="note"></div>
+
+  <div class="tabs" id="tabs">
+    <button data-t="overview" class="on">Overview</button>
+    <button data-t="monthly">Monthly review</button>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl"><label>Group by</label>
+      <div class="seg" id="grp"><button data-v="by_sector" class="on">GICS Sector</button><button data-v="by_theme">Theme</button></div>
+    </div>
+    <div class="ctrl ovonly"><label>Metric</label>
+      <div class="seg" id="met"><button data-v="level" class="on">Holding level</button><button data-v="share">Share of total</button><button data-v="rebase">Rebase = 100</button><button data-v="mom">MoM %</button><button data-v="netflow">Net flow (Δ)</button></div>
+    </div>
+    <div class="ctrl ovonly"><label>Range</label>
+      <div class="seg" id="rng"><button data-v="1M">1M</button><button data-v="3M">3M</button><button data-v="6M">6M</button><button data-v="1Y">1Y</button><button data-v="All" class="on">All</button></div>
+    </div>
+    <div class="ctrl ovonly"><label>Chart type</label>
+      <div class="seg" id="typ"><button data-v="area" class="on">Stacked area</button><button data-v="line">Lines</button></div>
+    </div>
+    <div class="ctrl"><label>Data</label>
+      <div class="seg" id="dm"><button data-v="clean" class="on">Cleaned</button><button data-v="raw">Raw</button></div>
+    </div>
+  </div>
+
+  <div id="tab-overview">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2 id="mainTitle">Sector composition over time</h2>
+    <p class="cap" id="mainCap"></p>
+    <div class="chartbox"><canvas id="mainChart"></canvas></div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Momentum heatmap
+        <span class="seg" id="heatmode" style="font-weight:400"><button data-v="pct" class="on">%</button><button data-v="abs">Δ abs</button></span>
+      </h2>
+      <p class="cap">Green = southbound inflow that month; red = outflow. <b>Click any cell</b> to see that group's top ticker gainers and losers for the month.</p>
+      <div class="heatwrap"><table class="htab" id="heat"></table></div>
+      <div class="legend">
+        <span><span class="sw" style="background:#0f9d58"></span>strong inflow</span>
+        <span><span class="sw" style="background:#a7dcc0"></span>mild inflow</span>
+        <span><span class="sw" style="background:#f4c7c3"></span>mild outflow</span>
+        <span><span class="sw" style="background:#d93025"></span>strong outflow</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Drill-down — top holdings &amp; movers
+      <span style="display:flex;gap:8px;align-items:center;font-weight:400">
+        <select id="ddSel"></select>
+        <span class="seg" id="ddPeriod"><button data-v="mom" class="on">MoM</button><button data-v="jan">Since Jan-25</button></span>
+      </span>
+    </h2>
+    <p class="cap" id="ddCap"></p>
+    <div class="dd">
+      <div><div class="mvh">Largest southbound holdings</div><table class="mv" id="ddHold"></table></div>
+      <div><div class="mvh" id="mvHdr">Biggest movers</div><table class="mv" id="ddMove"></table></div>
+    </div>
+  </div>
+
+  <div class="grid2b">
+    <div class="card">
+      <h2>New southbound entrants</h2>
+      <p class="cap">Stocks bought from a zero base since Dec-2024 — early signal of new themes.</p>
+      <table class="mv" id="entrants"></table>
+    </div>
+    <div class="card">
+      <h2>Momentum / acceleration</h2>
+      <p class="cap">Latest 1-month net flow vs the prior 3-month average. Up = inflows accelerating, down = fading.</p>
+      <table class="mv" id="accel"></table>
+    </div>
+  </div>
+  </div><!--/tab-overview-->
+
+  <div id="tab-monthly" hidden>
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0" id="mTitle">Monthly review</h2>
+      <div class="mnav">
+        <button class="nb" id="mPrev">‹</button>
+        <select id="mSel"></select>
+        <button class="nb" id="mNext">›</button>
+      </div>
+    </div>
+
+    <div class="wrapcard">
+      <div class="big" id="wrapHead">Market wrap</div>
+      <p id="wrapText"></p>
+      <div class="stat" id="wrapStat"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2 id="mChartTitle">Industry performance</h2>
+        <p class="cap">Month-over-month % change in southbound holding for each group that month.</p>
+        <div class="chartbox" style="height:420px"><canvas id="monthChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Group detail</h2>
+        <p class="cap" id="mTblCap">Holding, absolute change and % change for the month. <b>Click a row</b> for that group's top ticker gainers and losers.</p>
+        <table class="rank" id="mTable"></table>
+      </div>
+    </div>
+
+    <div class="grid2b">
+      <div class="card">
+        <h2>Biggest stock inflows</h2>
+        <p class="cap">Largest increases in southbound holding this month.</p>
+        <table class="mv" id="mIn"></table>
+      </div>
+      <div class="card">
+        <h2>Biggest stock outflows</h2>
+        <p class="cap">Largest reductions in southbound holding this month.</p>
+        <table class="mv" id="mOut"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="mh">
+      <div><h3 id="mdTitle"></h3><div class="s" id="mdSub"></div></div>
+      <button class="x" id="mdX">×</button>
+    </div>
+    <div class="body">
+      <div class="two">
+        <div><div class="colh up" id="mdUpH">Top 5 increases</div><table class="mv" id="mdUp"></table></div>
+        <div><div class="colh dn" id="mdDnH">Top 5 decreases</div><table class="mv" id="mdDn"></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"dates":["2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"stocks":[{"code":"700","name":"騰訊 (700)","theme":"MegaTech","sector":"Communication Services","raw":[934.445,1048.526,1040.224,1052.253,1081.985,1039.053,997.138,985.609,1003.598,1011.989,1013.41,1014.227,1005.257,1020.002,1058.76,1090.145,980.534,1056.121,1054.807],"clean":[934.445,1048.526,1040.224,1052.253,1081.985,1039.053,997.138,985.609,1003.598,1011.989,1013.41,1014.227,1005.257,1020.002,1058.76,1090.145,1083.202,1056.121,1054.807],"full":"Tencent Holdings Limited"},{"code":"9988","name":"阿里 (9988)","theme":"MegaTech","sector":"Communication Services","raw":[897.075,907.287,1285.811,1490.436,1662.83,1639.028,1570.108,1550.137,1643.176,2111.081,2090.869,2201.787,2207.497,2221.554,2256.024,2236.22,2327.405,2121.796,1893.135],"clean":[897.075,907.287,1285.811,1490.436,1662.83,1639.028,1570.108,1550.137,1643.176,2111.081,2090.869,2201.787,2207.497,2221.554,2256.024,2236.22,2214.687,2121.796,1893.135],"full":"Alibaba Group Holding Limited (ky)"},{"code":"3690","name":"美團 (3690)","theme":"MegaTech","sector":"Consumer Discretionary","raw":[631.891,605.877,599.148,615.703,694.685,798.702,910.061,968.596,1039.705,1099.249,1156.155,1183.364,1268.625,1257.823,1320.556,1372.156,1712.223,1310.891,1265.268],"clean":[631.891,605.877,599.148,615.703,694.685,798.702,910.061,968.596,1039.705,1099.249,1156.155,1183.364,1268.625,1257.823,1320.556,1372.156,1363.762,1310.891,1265.268],"full":"Meituan"},{"code":"1810","name":"小米 (1810)","theme":"MegaTech","sector":"Information Technology","raw":[3988.015,4117.855,4099.504,4279.375,4359.457,4132.288,3905.609,3803.028,3891.143,3790.859,3932.266,4271.836,4625.875,4890.743,5101.149,5303.709,5891.315,5318.978,5184.133],"clean":[3988.015,4117.855,4099.504,4279.375,4359.457,4132.288,3905.609,3803.028,3891.143,3790.859,3932.266,4271.836,4625.875,4890.743,5101.149,5303.709,5418.224,5318.978,5184.133],"full":"Xiaomi Corporation"},{"code":"9618","name":"京東 (9618)","theme":"MegaTech","sector":"Communication Services","raw":[2.718,2.631,2.521,2.415,2.346,2.319,2.199,2.153,2.097,2.044,1.984,1.959,1.812,1.763,1.745,1.718,1.33,1.658,1.628],"clean":[2.718,2.631,2.521,2.415,2.346,2.319,2.199,2.153,2.097,2.044,1.984,1.959,1.812,1.763,1.745,1.718,1.694,1.658,1.628],"full":"Jd.com, Inc."},{"code":"9999","name":"網易 (9999)","theme":"MegaTech","sector":"Communication Services","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"2513","name":"智譜","theme":"AI","sector":"Information Technology","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,6.422],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,6.422],"full":""},{"code":"100","name":"Minimax","theme":"AI","sector":"Information Technology","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"9903","name":"天數智芯","theme":"AI","sector":"Information Technology","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.786],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.786],"full":""},{"code":"1879","name":"曦智科技","theme":"AI","sector":"Information Technology","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"3277","name":"長光辰芯","theme":"AI","sector":"Information Technology","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"1686","name":"新意網集團有限公司","theme":"AI","sector":"Information Technology","raw":[12.152,12.417,199.616,157.764,106.754,105.195,111.686,127.891,100.929,125.808,121.392,112.188,88.613,171.095,155.82,132.398,103.804,99.731,84.147],"clean":[12.152,12.417,199.616,157.764,106.754,105.195,111.686,127.891,100.929,125.808,121.392,112.188,88.613,171.095,155.82,132.398,118.431,99.731,84.147],"full":"Sunevision Holdings Ltd."},{"code":"981","name":"中芯","theme":"Semi","sector":"Information Technology","raw":[1856.07,2271.748,2350.1,2293.963,2353.176,2269.976,2344.803,2496.332,2491.183,2526.897,2455.224,2403.272,2363.571,2379.078,2358.846,2262.145,2031.288,2415.815,2580.484],"clean":[1856.07,2271.748,2350.1,2293.963,2353.176,2269.976,2344.803,2496.332,2491.183,2526.897,2455.224,2403.272,2363.571,2379.078,2358.846,2262.145,2254.759,2415.815,2580.484],"full":"Semiconductor Manufacturing International Corporation"},{"code":"1347","name":"華虹","theme":"Semi","sector":"Information Technology","raw":[289.025,274.651,336.326,319.295,364.837,367.483,416.222,432.403,438.049,408.598,403.411,390.647,361.093,372.918,372.151,363.153,416.916,368.785,392.86],"clean":[289.025,274.651,336.326,319.295,364.837,367.483,416.222,432.403,438.049,408.598,403.411,390.647,361.093,372.918,372.151,363.153,367.54,368.785,392.86],"full":"Hua Hong Grace Semiconductor Limited"},{"code":"1888","name":"建滔積層板","theme":"Semi","sector":"Information Technology","raw":[41.702,64.716,81.376,122.431,102.907,72.36,61.728,81.451,116.052,152.248,223.416,194.032,184.351,213.701,246.217,220.054,242.758,326.594,573.964],"clean":[41.702,64.716,81.376,122.431,102.907,72.36,61.728,81.451,116.052,152.248,223.416,194.032,184.351,213.701,246.217,220.054,309.0,326.594,573.964],"full":"Kingboard Laminates Holdings Limited"},{"code":"148","name":"建滔集團","theme":"Semi","sector":"Information Technology","raw":[45.004,41.812,40.99,41.749,40.844,36.084,35.227,44.05,46.893,46.215,51.796,50.618,49.476,55.905,64.119,68.115,72.305,134.439,311.345],"clean":[45.004,41.812,40.99,41.749,40.844,36.084,35.227,44.05,46.893,46.215,51.796,50.618,49.476,55.905,64.119,68.115,95.149,134.439,311.345],"full":"Kingboard Holdings Limited"},{"code":"9880","name":"優必選","theme":"Robotics","sector":"Industrials","raw":[14.751,51.442,74.835,80.082,84.974,92.388,93.03,104.227,107.757,118.095,119.211,117.701,125.729,119.185,124.321,133.043,104.091,128.235,131.616],"clean":[14.751,51.442,74.835,80.082,84.974,92.388,93.03,104.227,107.757,118.095,119.211,117.701,125.729,119.185,124.321,133.043,127.299,128.235,131.616],"full":"Ubtech Robotics Corp Ltd"},{"code":"179","name":"德昌電機","theme":"Robotics","sector":"Consumer Discretionary","raw":[22.533,24.484,46.764,73.199,68.537,73.839,85.767,90.586,104.481,133.465,120.883,111.243,110.603,95.242,88.092,97.098,43.409,107.001,120.653],"clean":[22.533,24.484,46.764,73.199,68.537,73.839,85.767,90.586,104.481,133.465,120.883,111.243,110.603,95.242,88.092,97.098,89.829,107.001,120.653],"full":"Johnson Electric Holdings Limited"},{"code":"1651","name":"津上精密機床","theme":"Robotics","sector":"Industrials","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"669","name":"創科","theme":"Industrials","sector":"Industrials","raw":[15.224,15.155,15.114,13.992,14.345,15.631,14.946,18.562,20.738,23.289,22.101,21.05,24.313,22.143,21.795,18.967,19.906,13.746,12.076],"clean":[15.224,15.155,15.114,13.992,14.345,15.631,14.946,18.562,20.738,23.289,22.101,21.05,24.313,22.143,21.795,18.967,15.413,13.746,12.076],"full":"Techtronic Industries Company Limited"},{"code":"2382","name":"舜宇光學","theme":"Industrials","sector":"Information Technology","raw":[217.637,218.073,210.895,209.835,217.272,204.189,222.85,220.907,219.271,209.294,206.072,185.878,187.909,187.349,183.837,181.951,195.255,178.691,158.36],"clean":[217.637,218.073,210.895,209.835,217.272,204.189,222.85,220.907,219.271,209.294,206.072,185.878,187.909,187.349,183.837,181.951,175.555,178.691,158.36],"full":"Sunny Optical Technology (group) Company Limited"},{"code":"2018","name":"瑞聲","theme":"Industrials","sector":"Information Technology","raw":[75.246,75.981,82.256,104.662,106.45,103.188,104.018,95.006,97.141,95.023,98.058,95.962,104.361,116.529,118.196,116.634,140.982,99.244,85.915],"clean":[75.246,75.981,82.256,104.662,106.45,103.188,104.018,95.006,97.141,95.023,98.058,95.962,104.361,116.529,118.196,116.634,113.62,99.244,85.915],"full":"Aac Technologies Holdings Inc."},{"code":"2338","name":"濰柴動力","theme":"Industrials","sector":"Industrials","raw":[272.242,315.658,338.52,343.856,364.595,340.918,353.402,339.322,342.567,316.735,315.537,291.062,289.256,269.672,270.881,262.439,175.401,230.166,216.509],"clean":[272.242,315.658,338.52,343.856,364.595,340.918,353.402,339.322,342.567,316.735,315.537,291.062,289.256,269.672,270.881,262.439,254.331,230.166,216.509],"full":"Weichai Power Co., Ltd."},{"code":"868","name":"信義玻璃","theme":"Industrials","sector":"Industrials","raw":[305.798,320.374,336.844,350.064,353.404,345.481,341.892,381.686,400.362,438.796,446.932,467.017,454.017,467.792,485.828,510.267,346.55,563.005,565.601],"clean":[305.798,320.374,336.844,350.064,353.404,345.481,341.892,381.686,400.362,438.796,446.932,467.017,454.017,467.792,485.828,510.267,531.847,563.005,565.601],"full":"Xinyi Glass Holdings Limited"},{"code":"189","name":"東岳","theme":"Industrials","sector":"Materials","raw":[610.713,639.106,617.429,647.087,649.186,637.488,601.956,589.974,589.31,567.826,517.63,546.127,541.742,557.844,553.53,564.83,659.798,564.077,622.992],"clean":[610.713,639.106,617.429,647.087,649.186,637.488,601.956,589.974,589.31,567.826,517.63,546.127,541.742,557.844,553.53,564.83,581.902,564.077,622.992],"full":"Dongyue Group Limited"},{"code":"1072","name":"東風電氣","theme":"Industrials","sector":"Industrials","raw":[88.97,88.905,90.492,103.072,99.537,98.628,94.576,143.498,129.733,135.521,111.74,106.131,114.375,98.35,95.822,92.541,77.091,86.018,67.929],"clean":[88.97,88.905,90.492,103.072,99.537,98.628,94.576,143.498,129.733,135.521,111.74,106.131,114.375,98.35,95.822,92.541,88.356,86.018,67.929],"full":"Dongfang Electric Corporation Limited"},{"code":"968","name":"信義光能控股有限公司","theme":"Industrials","sector":"Information Technology","raw":[1485.12,1534.435,1518.037,1703.109,1668.154,1737.032,1748.022,1723.393,1694.639,1699.444,1660.396,1639.553,1557.217,1454.876,1408.225,1413.056,1820.597,1315.571,1316.266],"clean":[1485.12,1534.435,1518.037,1703.109,1668.154,1737.032,1748.022,1723.393,1694.639,1699.444,1660.396,1639.553,1557.217,1454.876,1408.225,1413.056,1434.917,1315.571,1316.266],"full":"Xinyi Solar Holdings Limited"},{"code":"1133","name":"哈爾濱電氣","theme":"Industrials","sector":"Industrials","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"full":""},{"code":"241","name":"阿里健康","theme":"Platform","sector":"Consumer Staples","raw":[1295.325,1303.797,1535.124,1556.192,1575.036,1612.791,1585.896,1759.463,1890.259,1782.098,1750.528,1780.992,1739.5,1972.034,1985.376,2024.863,2753.527,2141.891,2023.037],"clean":[1295.325,1303.797,1535.124,1556.192,1575.036,1612.791,1585.896,1759.463,1890.259,1782.098,1750.528,1780.992,1739.5,1972.034,1985.376,2024.863,2073.243,2141.891,2023.037],"full":"Alibaba Health Information Technology Limited"},{"code":"6618","name":"京東健康","theme":"Platform","sector":"Consumer Staples","raw":[203.985,215.781,254.321,286.206,291.43,280.762,257.473,269.65,281.432,276.358,278.342,275.361,260.192,251.772,257.362,265.665,465.186,243.881,210.199],"clean":[203.985,215.781,254.321,286.206,291.43,280.762,257.473,269.65,281.432,276.358,278.342,275.361,260.192,251.772,257.362,265.665,262.421,243.881,210.199],"full":"Jd Health International Inc."},{"code":"2400","name":"心動","theme":"Platform","sector":"Communication Services","raw":[107.681,112.324,104.262,105.524,103.89,98.767,98.714,105.447,106.619,112.848,112.816,116.527,116.785,119.319,134.063,136.824,158.561,136.339,131.493],"clean":[107.681,112.324,104.262,105.524,103.89,98.767,98.714,105.447,106.619,112.848,112.816,116.527,116.785,119.319,134.063,136.824,142.523,136.339,131.493],"full":"Xd Inc."},{"code":"772","name":"閱文集團","theme":"Platform","sector":"Communication Services","raw":[148.413,140.534,138.556,160.517,168.254,166.015,159.274,161.167,181.236,182.77,186.72,188.575,175.938,176.319,194.794,194.222,170.022,202.031,203.753],"clean":[148.413,140.534,138.556,160.517,168.254,166.015,159.274,161.167,181.236,182.77,186.72,188.575,175.938,176.319,194.794,194.222,202.772,202.031,203.753],"full":"China Literature Limited"},{"code":"1357","name":"美圖公司","theme":"Platform","sector":"Communication Services","raw":[1549.702,1508.734,1435.226,1440.649,1413.859,1398.68,1504.477,1519.52,1564.616,1482.51,1453.472,1434.958,1307.951,1329.984,1433.592,1349.138,1527.598,1468.767,1502.648],"clean":[1549.702,1508.734,1435.226,1440.649,1413.859,1398.68,1504.477,1519.52,1564.616,1482.51,1453.472,1434.958,1307.951,1329.984,1433.592,1349.138,1374.682,1468.767,1502.648],"full":"Meitu, Inc."},{"code":"2013","name":"微盟集團","theme":"Platform","sector":"Information Technology","raw":[1268.004,1546.123,1240.13,1071.364,988.055,1019.797,1002.743,1003.937,1200.266,1080.118,1133.981,1108.004,1007.908,1214.629,1093.314,1095.138,874.54,1046.902,1068.261],"clean":[1268.004,1546.123,1240.13,1071.364,988.055,1019.797,1002.743,1003.937,1200.266,1080.118,1133.981,1108.004,1007.908,1214.629,1093.314,1095.138,1076.236,1046.902,1068.261],"full":"Weimob Inc."},{"code":"941","name":"中移動","theme":"Telecom","sector":"Communication Services","raw":[2750.831,2840.547,0.0,3023.633,3078.472,3145.347,3122.31,3047.466,3015.124,3018.562,3073.781,3106.903,3007.001,2790.471,2793.529,2759.352,1767.381,2947.691,2907.274],"clean":[2750.831,2840.547,2932.09,3023.633,3078.472,3145.347,3122.31,3047.466,3015.124,3018.562,3073.781,3106.903,3007.001,2790.471,2793.529,2759.352,2864.028,2947.691,2907.274],"full":"China Mobile Limited (hk)"},{"code":"728","name":"中電信","theme":"Telecom","sector":"Communication Services","raw":[9682.231,9877.675,0.0,10209.903,10253.626,10330.003,10352.194,10369.817,10298.29,9787.664,9859.004,10094.203,9979.496,9839.957,9898.089,9902.233,7340.828,10125.285,9818.866],"clean":[9682.231,9877.675,10043.789,10209.903,10253.626,10330.003,10352.194,10369.817,10298.29,9787.664,9859.004,10094.203,9979.496,9839.957,9898.089,9902.233,9954.258,10125.285,9818.866],"full":"China Telecom Corporation Limited"},{"code":"762","name":"聯通","theme":"Telecom","sector":"Communication Services","raw":[3997.463,4049.729,0.0,4164.523,4279.791,4394.474,4396.972,4378.398,4470.562,4418.125,4461.855,4471.982,4241.762,4082.425,4060.122,3985.448,2874.711,4050.246,3885.893],"clean":[3997.463,4049.729,4107.126,4164.523,4279.791,4394.474,4396.972,4378.398,4470.562,4418.125,4461.855,4471.982,4241.762,4082.425,4060.122,3985.448,3973.282,4050.246,3885.893],"full":"China Unicom (hong Kong) Limited"},{"code":"788","name":"中國鐵塔","theme":"Telecom","sector":"Communication Services","raw":[8729.057,8870.253,0.0,959.528,970.272,977.233,934.59,875.225,842.748,816.692,832.412,888.343,953.102,938.837,947.863,977.895,1055.1,991.416,1004.439],"clean":[8729.057,8870.253,4914.891,959.528,970.272,977.233,934.59,875.225,842.748,816.692,832.412,888.343,953.102,938.837,947.863,977.895,983.954,991.416,1004.439],"full":"China Tower Corporation Limited"},{"code":"763","name":"中興","theme":"Telecom","sector":"Communication Services","raw":[334.115,389.806,0.0,387.601,368.773,356.138,356.677,371.569,419.189,387.77,405.346,373.479,371.085,369.526,368.399,365.951,426.601,386.759,385.682],"clean":[334.115,389.806,388.703,387.601,368.773,356.138,356.677,371.569,419.189,387.77,405.346,373.479,371.085,369.526,368.399,365.951,387.061,386.759,385.682],"full":"Zte Corporation"},{"code":"8","name":"電訊盈科有限公司","theme":"Telecom","sector":"Communication Services","raw":[144.852,158.83,0.0,209.403,244.812,221.072,210.062,223.008,214.525,215.583,229.735,266.492,273.927,231.543,252.884,256.159,423.79,245.591,231.661],"clean":[144.852,158.83,184.117,209.403,244.812,221.072,210.062,223.008,214.525,215.583,229.735,266.492,273.927,231.543,252.884,256.159,256.426,245.591,231.661],"full":"Pccw Limited"},{"code":"5","name":"滙豐","theme":"Banks","sector":"Financials","raw":[1544.132,1565.44,1565.937,1563.695,1557.591,1564.331,1567.246,1579.135,1562.05,1557.094,1553.491,1560.953,1563.198,1567.646,1574.64,1549.409,198.591,1541.696,1529.152],"clean":[1544.132,1565.44,1565.937,1563.695,1557.591,1564.331,1567.246,1579.135,1562.05,1557.094,1553.491,1560.953,1563.198,1567.646,1574.64,1549.409,1547.801,1541.696,1529.152],"full":"Hsbc Holdings Plc"},{"code":"2388","name":"中銀香港","theme":"Banks","sector":"Financials","raw":[80.646,88.567,95.927,171.201,221.25,263.193,314.302,367.351,375.276,356.794,372.112,373.143,382.267,374.62,369.65,359.659,207.517,390.276,431.487],"clean":[80.646,88.567,95.927,171.201,221.25,263.193,314.302,367.351,375.276,356.794,372.112,373.143,382.267,374.62,369.65,359.659,368.884,390.276,431.487],"full":"Boc Hong Kong (holdings) Limited (hk)"},{"code":"1398","name":"工行","theme":"Banks","sector":"Financials","raw":[29432.94,30832.956,31693.052,31514.515,32272.785,32781.488,33072.626,32831.075,33030.187,33497.77,34001.76,34912.324,34760.209,35248.294,35611.398,36408.786,13764.352,36586.226,36275.221],"clean":[29432.94,30832.956,31693.052,31514.515,32272.785,32781.488,33072.626,32831.075,33030.187,33497.77,34001.76,34912.324,34760.209,35248.294,35611.398,36408.786,37037.776,36586.226,36275.221],"full":"Industrial And Commercial Bank Of China Limited"},{"code":"939","name":"建行","theme":"Banks","sector":"Financials","raw":[26436.016,26933.829,27383.624,27505.141,28512.924,30048.601,31886.179,33456.334,33348.185,33271.407,33331.789,33985.164,33825.303,34545.566,34808.94,35025.262,9640.239,36090.827,36335.596],"clean":[26436.016,26933.829,27383.624,27505.141,28512.924,30048.601,31886.179,33456.334,33348.185,33271.407,33331.789,33985.164,33825.303,34545.566,34808.94,35025.262,35739.451,36090.827,36335.596],"full":"China Construction Bank Corporation"},{"code":"3988","name":"中行","theme":"Banks","sector":"Financials","raw":[20052.653,20914.064,22083.641,23618.301,24566.597,25570.804,24937.705,24802.393,24647.159,24905.352,25250.854,26050.627,25985.656,26149.101,26189.97,27344.434,8906.869,28550.771,29098.94],"clean":[20052.653,20914.064,22083.641,23618.301,24566.597,25570.804,24937.705,24802.393,24647.159,24905.352,25250.854,26050.627,25985.656,26149.101,26189.97,27344.434,27946.556,28550.771,29098.94],"full":"Bank Of China Limited"},{"code":"1288","name":"農行","theme":"Banks","sector":"Financials","raw":[11001.917,11552.906,12087.662,12774.328,12901.801,13115.805,13755.346,13169.648,13277.641,13652.483,14125.163,14113.506,14422.412,14519.679,14489.727,14804.958,6656.742,15437.362,15492.933],"clean":[11001.917,11552.906,12087.662,12774.328,12901.801,13115.805,13755.346,13169.648,13277.641,13652.483,14125.163,14113.506,14422.412,14519.679,14489.727,14804.958,15222.183,15437.362,15492.933],"full":"Agricultural Bank Of China Limited"},{"code":"3968","name":"招行","theme":"Banks","sector":"Financials","raw":[497.93,572.247,669.985,822.799,857.428,949.967,1066.733,1072.843,1060.896,1042.0,1120.471,1225.983,1326.56,1361.582,1393.972,1425.643,225.061,1454.743,1435.293],"clean":[497.93,572.247,669.985,822.799,857.428,949.967,1066.733,1072.843,1060.896,1042.0,1120.471,1225.983,1326.56,1361.582,1393.972,1425.643,1459.098,1454.743,1435.293],"full":"China Merchants Bank Co., Ltd."},{"code":"388","name":"港交所","theme":"Financials","sector":"Financials","raw":[64.024,62.012,65.71,58.181,59.166,64.751,65.689,72.284,75.706,72.474,70.136,68.966,73.977,74.01,73.428,66.556,72.085,53.697,47.917],"clean":[64.024,62.012,65.71,58.181,59.166,64.751,65.689,72.284,75.706,72.474,70.136,68.966,73.977,74.01,73.428,66.556,60.513,53.697,47.917],"full":"Hong Kong Exchanges And Clearing Limited"},{"code":"1299","name":"友邦","theme":"Financials","sector":"Financials","raw":[165.189,171.467,183.342,179.75,183.033,157.942,149.1,155.455,222.274,257.26,259.749,272.516,280.916,307.825,317.851,335.382,170.689,271.905,290.67],"clean":[165.189,171.467,183.342,179.75,183.033,157.942,149.1,155.455,222.274,257.26,259.749,272.516,280.916,307.825,317.851,335.382,296.993,271.905,290.67],"full":"Aia Group Limited"},{"code":"2318","name":"平保","theme":"Financials","sector":"Financials","raw":[637.57,710.379,700.537,708.275,702.909,709.963,771.173,828.384,868.91,930.411,968.799,1030.518,1078.916,1100.126,1083.566,1033.574,657.385,1030.101,978.465],"clean":[637.57,710.379,700.537,708.275,702.909,709.963,771.173,828.384,868.91,930.411,968.799,1030.518,1078.916,1100.126,1083.566,1033.574,1007.363,1030.101,978.465],"full":"Ping An Insurance (group) Company Of China, Ltd."},{"code":"2628","name":"中人壽","theme":"Financials","sector":"Financials","raw":[801.469,827.434,902.832,966.904,926.233,967.17,1218.044,1574.992,1903.355,1820.849,1898.003,1969.748,2005.488,2207.368,2250.598,2043.384,1285.79,2279.517,2225.424],"clean":[801.469,827.434,902.832,966.904,926.233,967.17,1218.044,1574.992,1903.355,1820.849,1898.003,1969.748,2005.488,2207.368,2250.598,2043.384,2113.83,2279.517,2225.424],"full":"China Life Insurance Company Limited"},{"code":"2601","name":"太保","theme":"Financials","sector":"Financials","raw":[927.834,945.109,1004.811,1017.148,1019.731,1038.307,1083.156,1128.606,1169.761,1237.38,1271.098,1270.5,1274.195,1285.908,1279.435,1176.109,709.426,1164.364,1144.299],"clean":[927.834,945.109,1004.811,1017.148,1019.731,1038.307,1083.156,1128.606,1169.761,1237.38,1271.098,1270.5,1274.195,1285.908,1279.435,1176.109,1153.628,1164.364,1144.299],"full":"China Pacific Insurance (group) Co., Ltd."},{"code":"9992","name":"泡泡瑪特","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[155.482,167.319,169.513,194.686,228.615,229.146,225.617,203.257,197.669,190.504,216.43,226.365,238.539,264.054,270.945,298.571,265.892,328.922,334.878],"clean":[155.482,167.319,169.513,194.686,228.615,229.146,225.617,203.257,197.669,190.504,216.43,226.365,238.539,264.054,270.945,298.571,327.546,328.922,334.878],"full":"Pop Mart International Group Limited"},{"code":"6181","name":"老鋪黃金","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[8.724,10.611,10.986,12.249,13.93,15.17,15.857,16.039,17.316,19.197,18.424,19.145,19.011,18.107,19.498,18.98,19.248,19.556,18.397],"clean":[8.724,10.611,10.986,12.249,13.93,15.17,15.857,16.039,17.316,19.197,18.424,19.145,19.011,18.107,19.498,18.98,19.806,19.556,18.397],"full":"Laopu Gold Co., Ltd."},{"code":"1211","name":"比亞迪","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[48.652,47.466,48.938,57.585,55.625,47.861,78.53,212.216,236.552,292.9,301.623,310.8,338.651,340.835,355.792,390.405,556.353,383.558,377.636],"clean":[48.652,47.466,48.938,57.585,55.625,47.861,78.53,212.216,236.552,292.9,301.623,310.8,338.651,340.835,355.792,390.405,390.803,383.558,377.636],"full":"Byd Company Limited"},{"code":"175","name":"吉利汽車","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[1460.188,1361.236,1420.85,1348.032,1344.238,1336.729,1294.699,1238.688,1159.53,1174.679,1205.427,1243.281,1239.687,1271.912,1274.844,1376.098,1037.227,1100.393,1108.252],"clean":[1460.188,1361.236,1420.85,1348.032,1344.238,1336.729,1294.699,1238.688,1159.53,1174.679,1205.427,1243.281,1239.687,1271.912,1274.844,1376.098,1242.502,1100.393,1108.252],"full":"Geely Automobile Holdings Limited"},{"code":"2333","name":"長城汽車","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[952.386,959.362,925.637,1017.942,1033.256,1087.541,1120.472,1133.058,1183.135,1105.774,1078.483,1066.127,1012.154,954.94,935.816,929.797,864.435,937.216,893.401],"clean":[952.386,959.362,925.637,1017.942,1033.256,1087.541,1120.472,1133.058,1183.135,1105.774,1078.483,1066.127,1012.154,954.94,935.816,929.797,941.478,937.216,893.401],"full":"Great Wall Motor Company Limited (cn)"},{"code":"2020","name":"安踏","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[247.215,237.829,225.435,223.036,247.523,251.847,239.702,211.304,186.659,205.319,213.743,225.91,223.106,230.249,229.01,238.961,164.616,214.566,205.294],"clean":[247.215,237.829,225.435,223.036,247.523,251.847,239.702,211.304,186.659,205.319,213.743,225.91,223.106,230.249,229.01,238.961,219.791,214.566,205.294],"full":"Anta Sports Products Limited"},{"code":"1929","name":"周大福","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[95.772,99.738,93.107,103.422,70.696,75.818,97.543,85.204,77.949,98.798,101.139,103.877,92.817,104.175,98.106,87.666,140.955,85.162,80.144],"clean":[95.772,99.738,93.107,103.422,70.696,75.818,97.543,85.204,77.949,98.798,101.139,103.877,92.817,104.175,98.106,87.666,87.677,85.162,80.144],"full":"Chow Tai Fook Jewellery Group Limited"},{"code":"27","name":"銀娛","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[25.124,26.956,34.201,49.925,49.724,49.364,49.396,50.047,64.399,65.561,70.675,79.308,87.922,80.639,76.399,72.971,85.799,66.058,43.612],"clean":[25.124,26.956,34.201,49.925,49.724,49.364,49.396,50.047,64.399,65.561,70.675,79.308,87.922,80.639,76.399,72.971,68.408,66.058,43.612],"full":"Galaxy Entertainment Group Limited"},{"code":"6862","name":"海底撈","theme":"Consumers Discretionary","sector":"Consumer Discretionary","raw":[305.948,309.283,304.865,262.629,265.286,296.587,306.339,345.69,393.727,460.362,475.973,462.203,482.808,484.858,526.553,535.836,409.055,501.106,468.526],"clean":[305.948,309.283,304.865,262.629,265.286,296.587,306.339,345.69,393.727,460.362,475.973,462.203,482.808,484.858,526.553,535.836,532.219,501.106,468.526],"full":"Haidilao International Holding Ltd."},{"code":"9633","name":"農夫山泉","theme":"Consumers Staples","sector":"Consumer Staples","raw":[173.222,170.96,152.082,172.201,158.964,164.805,167.388,166.677,158.778,157.172,154.228,149.902,154.598,149.051,148.74,153.032,144.88,144.865,138.589],"clean":[173.222,170.96,152.082,172.201,158.964,164.805,167.388,166.677,158.778,157.172,154.228,149.902,154.598,149.051,148.74,153.032,152.127,144.865,138.589],"full":"Nongfu Spring Co., Ltd"},{"code":"288","name":"萬洲","theme":"Consumers Staples","sector":"Consumer Staples","raw":[320.033,349.226,351.027,409.256,422.181,435.267,444.892,463.016,483.141,537.299,576.723,631.682,785.867,789.991,783.218,761.959,914.062,751.738,766.386],"clean":[320.033,349.226,351.027,409.256,422.181,435.267,444.892,463.016,483.141,537.299,576.723,631.682,785.867,789.991,783.218,761.959,745.901,751.738,766.386],"full":"Wh Group Limited (ky)"},{"code":"1876","name":"百威亞太","theme":"Consumers Staples","sector":"Consumer Staples","raw":[100.288,117.451,98.498,117.009,110.052,114.343,127.356,114.781,137.429,142.167,140.262,153.901,170.755,178.269,181.286,194.62,176.179,163.159,164.535],"clean":[100.288,117.451,98.498,117.009,110.052,114.343,127.356,114.781,137.429,142.167,140.262,153.901,170.755,178.269,181.286,194.62,181.689,163.159,164.535],"full":"Budweiser Brewing Company Apac Limited"},{"code":"291","name":"華潤啤酒","theme":"Consumers Staples","sector":"Consumer Staples","raw":[403.161,428.252,422.566,310.635,301.337,251.457,239.924,195.217,183.086,202.445,207.507,214.777,224.35,246.632,241.165,244.74,149.549,251.28,228.059],"clean":[403.161,428.252,422.566,310.635,301.337,251.457,239.924,195.217,183.086,202.445,207.507,214.777,224.35,246.632,241.165,244.74,251.031,251.28,228.059],"full":"China Resources Beer (holdings) Company Limited"},{"code":"2319","name":"蒙牛","theme":"Consumers Staples","sector":"Consumer Staples","raw":[494.036,519.333,536.603,508.928,478.78,445.467,427.366,416.868,439.213,577.608,636.799,677.001,680.046,685.701,666.23,676.666,559.446,577.753,518.971],"clean":[494.036,519.333,536.603,508.928,478.78,445.467,427.366,416.868,439.213,577.608,636.799,677.001,680.046,685.701,666.23,676.666,628.524,577.753,518.971],"full":"China Mengniu Dairy Company Limited"},{"code":"857","name":"中石油","theme":"Basic Materials","sector":"Energy","raw":[4782.965,5207.687,5381.686,5264.83,5983.208,6140.975,6476.081,6699.333,6815.907,6875.584,7113.435,7487.378,7150.51,7262.015,7339.232,7593.316,5344.873,8183.875,8366.832],"clean":[4782.965,5207.687,5381.686,5264.83,5983.208,6140.975,6476.081,6699.333,6815.907,6875.584,7113.435,7487.378,7150.51,7262.015,7339.232,7593.316,7598.096,8183.875,8366.832],"full":"Petrochina Company Limited"},{"code":"883","name":"中海油田服務股份有限公司","theme":"Basic Materials","sector":"Energy","raw":[9333.645,9476.876,9312.355,9390.519,9618.957,9746.409,9665.492,9601.517,9523.71,9608.763,9951.282,10246.524,10207.862,10311.829,10378.514,10580.972,7534.751,10635.863,10468.92],"clean":[9333.645,9476.876,9312.355,9390.519,9618.957,9746.409,9665.492,9601.517,9523.71,9608.763,9951.282,10246.524,10207.862,10311.829,10378.514,10580.972,10550.286,10635.863,10468.92],"full":"Cnooc Limited"},{"code":"1088","name":"神華","theme":"Basic Materials","sector":"Energy","raw":[1671.821,1797.029,1860.278,1973.299,2107.903,2196.88,2286.125,2260.279,2294.915,2276.761,2288.701,2270.04,2242.549,2234.435,2239.196,2238.245,1713.468,2322.16,2350.653],"clean":[1671.821,1797.029,1860.278,1973.299,2107.903,2196.88,2286.125,2260.279,2294.915,2276.761,2288.701,2270.04,2242.549,2234.435,2239.196,2238.245,2289.698,2322.16,2350.653],"full":"China Shenhua Energy Company Limited"},{"code":"386","name":"中石化","theme":"Basic Materials","sector":"Energy","raw":[6483.692,6496.237,6293.063,6030.934,5893.28,6140.049,6097.894,6629.667,6721.39,6564.74,6293.393,6670.338,6867.1,7598.222,7716.481,7228.67,4680.236,7818.808,7658.736],"clean":[6483.692,6496.237,6293.063,6030.934,5893.28,6140.049,6097.894,6629.667,6721.39,6564.74,6293.393,6670.338,6867.1,7598.222,7716.481,7228.67,7603.3,7818.808,7658.736],"full":"China Petroleum & Chemical Corporation"},{"code":"2883","name":"中海油服","theme":"Basic Materials","sector":"Energy","raw":[595.99,599.878,574.592,609.808,643.974,623.304,637.587,631.291,625.262,573.433,568.017,551.294,556.601,548.607,522.695,519.765,395.956,507.939,502.226],"clean":[595.99,599.878,574.592,609.808,643.974,623.304,637.587,631.291,625.262,573.433,568.017,551.294,556.601,548.607,522.695,519.765,515.193,507.939,502.226],"full":"China Oilfield Services Limited"},{"code":"2899","name":"紫金","theme":"Basic Materials","sector":"Materials","raw":[1220.758,1304.854,1340.224,1525.274,1474.509,1439.547,1497.164,1485.167,1535.097,1650.021,1701.48,1695.31,1660.823,1536.463,1472.286,1364.156,619.458,1285.502,1240.894],"clean":[1220.758,1304.854,1340.224,1525.274,1474.509,1439.547,1497.164,1485.167,1535.097,1650.021,1701.48,1695.31,1660.823,1536.463,1472.286,1364.156,1364.629,1285.502,1240.894],"full":"Zijin Mining Group Co., Ltd."},{"code":"2259","name":"紫金黃金","theme":"Basic Materials","sector":"Materials","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,38.361,48.851,54.771,57.659,52.932,49.866,52.216,67.265,72.764],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,38.361,48.851,54.771,57.659,52.932,49.866,59.394,67.265,72.764],"full":"Zijin Gold International Company Limited"},{"code":"358","name":"江西銅","theme":"Basic Materials","sector":"Materials","raw":[162.127,190.697,226.751,260.042,277.113,271.577,278.673,275.677,321.056,345.483,336.138,314.606,310.321,327.471,287.971,222.509,130.182,218.841,214.14],"clean":[162.127,190.697,226.751,260.042,277.113,271.577,278.673,275.677,321.056,345.483,336.138,314.606,310.321,327.471,287.971,222.509,214.24,218.841,214.14],"full":"Jiangxi Copper Company Limited"},{"code":"2600","name":"中鋁","theme":"Basic Materials","sector":"Materials","raw":[972.288,1004.922,1067.094,1074.684,1204.421,1297.143,1317.089,1366.477,1417.436,1580.613,1720.335,1628.231,1614.364,1529.048,1509.139,1205.216,868.587,933.693,720.589],"clean":[972.288,1004.922,1067.094,1074.684,1204.421,1297.143,1317.089,1366.477,1417.436,1580.613,1720.335,1628.231,1614.364,1529.048,1509.139,1205.216,1093.457,933.693,720.589],"full":"Aluminum Corporation Of China Limited"},{"code":"6160","name":"百濟神州","theme":"Healthcare","sector":"Health Care","raw":[71.194,69.972,76.665,80.89,105.671,115.792,121.1,134.051,139.048,162.373,159.482,155.929,148.944,144.981,142.098,140.107,201.801,129.379,117.347],"clean":[71.194,69.972,76.665,80.89,105.671,115.792,121.1,134.051,139.048,162.373,159.482,155.929,148.944,144.981,142.098,140.107,137.351,129.379,117.347],"full":"Beone Medicine Ltd."},{"code":"3692","name":"翰森製藥","theme":"Healthcare","sector":"Health Care","raw":[168.378,169.51,161.087,162.329,177.914,172.227,169.192,171.114,206.9,228.219,228.315,238.034,269.845,271.405,274.506,271.781,525.958,299.897,286.937],"clean":[168.378,169.51,161.087,162.329,177.914,172.227,169.192,171.114,206.9,228.219,228.315,238.034,269.845,271.405,274.506,271.781,301.281,299.897,286.937],"full":"Hansoh Pharmaceutical Group Company Limited"},{"code":"2269","name":"藥明生物","theme":"Healthcare","sector":"Health Care","raw":[1151.936,1129.685,1157.881,1173.112,1260.221,1228.105,1240.056,1199.563,1100.042,1100.729,1069.491,1019.585,1041.308,1029.751,1065.623,1042.604,1170.235,991.871,955.166],"clean":[1151.936,1129.685,1157.881,1173.112,1260.221,1228.105,1240.056,1199.563,1100.042,1100.729,1069.491,1019.585,1041.308,1029.751,1065.623,1042.604,1021.362,991.871,955.166],"full":"Wuxi Biologics (cayman) Inc."},{"code":"1801","name":"信達","theme":"Healthcare","sector":"Health Care","raw":[434.683,446.096,472.731,500.187,544.126,574.292,650.534,669.553,661.341,664.299,621.322,600.891,584.593,540.888,536.166,525.043,688.307,514.903,495.028],"clean":[434.683,446.096,472.731,500.187,544.126,574.292,650.534,669.553,661.341,664.299,621.322,600.891,584.593,540.888,536.166,525.043,536.522,514.903,495.028],"full":"Innovent Biologics, Inc."},{"code":"2268","name":"藥明合聯生物","theme":"Healthcare","sector":"Health Care","raw":[111.612,119.552,130.361,133.135,169.12,161.475,155.458,159.216,148.166,150.588,157.619,153.052,162.917,158.07,161.551,149.534,175.769,157.321,160.517],"clean":[111.612,119.552,130.361,133.135,169.12,161.475,155.458,159.216,148.166,150.588,157.619,153.052,162.917,158.07,161.551,149.534,155.732,157.321,160.517],"full":"Wuxi Xdc Cayman Inc."},{"code":"1801","name":"信達","theme":"Healthcare","sector":"Health Care","raw":[434.683,446.096,472.731,500.187,544.126,574.292,650.534,669.553,661.341,664.299,621.322,600.891,584.593,540.888,536.166,525.043,688.307,514.903,495.028],"clean":[434.683,446.096,472.731,500.187,544.126,574.292,650.534,669.553,661.341,664.299,621.322,600.891,584.593,540.888,536.166,525.043,536.522,514.903,495.028],"full":"Innovent Biologics, Inc."},{"code":"3696","name":"英矽智能","theme":"Healthcare","sector":"Health Care","raw":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,9.742,18.324,20.845,33.912],"clean":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,9.742,16.276,20.845,33.912],"full":"Insilico Medicine Cayman Topco"},{"code":"2","name":"中電","theme":"Yield","sector":"Utilities","raw":[35.366,40.698,42.0,43.993,45.972,40.19,39.005,38.097,40.038,41.479,42.41,42.33,50.528,49.59,49.48,46.963,38.822,51.927,50.855],"clean":[35.366,40.698,42.0,43.993,45.972,40.19,39.005,38.097,40.038,41.479,42.41,42.33,50.528,49.59,49.48,46.963,46.15,51.927,50.855],"full":"Clp Holdings Limited"},{"code":"3","name":"中華煤氣","theme":"Yield","sector":"Utilities","raw":[164.638,226.21,340.319,509.574,624.88,552.335,465.158,408.636,463.759,507.671,602.237,650.38,608.152,591.163,588.555,568.816,326.095,575.315,535.596],"clean":[164.638,226.21,340.319,509.574,624.88,552.335,465.158,408.636,463.759,507.671,602.237,650.38,608.152,591.163,588.555,568.816,571.537,575.315,535.596],"full":"Hong Kong And China Gas Company Limited (the)"},{"code":"6","name":"電能","theme":"Yield","sector":"Utilities","raw":[131.447,141.036,147.52,144.111,154.633,156.935,159.994,148.42,150.366,152.523,147.106,148.716,168.139,205.742,216.872,215.174,95.645,211.284,178.949],"clean":[131.447,141.036,147.52,144.111,154.633,156.935,159.994,148.42,150.366,152.523,147.106,148.716,168.139,205.742,216.872,215.174,214.079,211.284,178.949],"full":"Power Assets Holdings Limited"},{"code":"8","name":"電訊盈科有限公司","theme":"Yield","sector":"Communication Services","raw":[144.852,158.83,154.95,209.403,244.812,221.072,210.062,223.008,214.525,215.583,229.735,266.492,273.927,231.543,252.884,256.159,423.79,245.591,231.661],"clean":[144.852,158.83,154.95,209.403,244.812,221.072,210.062,223.008,214.525,215.583,229.735,266.492,273.927,231.543,252.884,256.159,256.426,245.591,231.661],"full":"Pccw Limited"},{"code":"1038","name":"長江基建","theme":"Yield","sector":"Utilities","raw":[102.767,110.885,116.356,116.204,127.288,126.056,128.069,125.588,123.055,121.438,117.581,114.407,129.79,161.139,172.968,167.47,38.644,161.286,146.776],"clean":[102.767,110.885,116.356,116.204,127.288,126.056,128.069,125.588,123.055,121.438,117.581,114.407,129.79,161.139,172.968,167.47,167.449,161.286,146.776],"full":"Ck Infrastructure Holdings Limited"},{"code":"659","name":"周創建","theme":"Yield","sector":"Industrials","raw":[3.587,4.227,3.889,1.926,1.367,1.295,1.27,1.214,1.187,1.183,1.159,1.131,1.231,1.163,1.134,8.382,4.423,8.536,13.424],"clean":[3.587,4.227,3.889,1.926,1.367,1.295,1.27,1.214,1.187,1.183,1.159,1.131,1.231,1.163,1.134,8.382,8.915,8.536,13.424],"full":"Ctf Services Limited (bm)"},{"code":"12","name":"恒基","theme":"HK Property","sector":"Real Estate","raw":[36.059,40.854,37.273,41.011,41.615,45.064,48.692,61.668,67.973,63.737,63.576,76.538,86.678,76.087,81.485,85.275,118.062,75.201,61.019],"clean":[36.059,40.854,37.273,41.011,41.615,45.064,48.692,61.668,67.973,63.737,63.576,76.538,86.678,76.087,81.485,85.275,87.855,75.201,61.019],"full":"Henderson Land Development Company Limited"},{"code":"16","name":"新鴻基地產","theme":"HK Property","sector":"Real Estate","raw":[17.091,22.966,23.702,26.59,29.362,32.528,40.251,47.999,56.717,61.628,67.729,75.186,66.997,67.845,69.844,71.374,22.59,69.496,66.969],"clean":[17.091,22.966,23.702,26.59,29.362,32.528,40.251,47.999,56.717,61.628,67.729,75.186,66.997,67.845,69.844,71.374,72.511,69.496,66.969],"full":"Sun Hung Kai Properties Limited"},{"code":"17","name":"新世界發展有限公司","theme":"HK Property","sector":"Real Estate","raw":[64.552,80.287,80.888,86.911,92.592,101.427,106.782,119.749,135.159,146.547,138.167,128.966,121.577,117.219,121.322,116.271,136.662,116.909,110.848],"clean":[64.552,80.287,80.888,86.911,92.592,101.427,106.782,119.749,135.159,146.547,138.167,128.966,121.577,117.219,121.322,116.271,113.894,116.909,110.848],"full":"New World Development Company Limited"},{"code":"83","name":"信和","theme":"HK Property","sector":"Real Estate","raw":[25.022,29.887,37.539,60.937,66.363,67.111,75.507,102.681,105.278,121.193,126.453,136.829,141.197,132.275,121.146,125.495,146.58,120.838,106.444],"clean":[25.022,29.887,37.539,60.937,66.363,67.111,75.507,102.681,105.278,121.193,126.453,136.829,141.197,132.275,121.146,125.495,131.738,120.838,106.444],"full":"Sino Land Company Limited"},{"code":"14","name":"希慎興業有限公司","theme":"HK Property","sector":"Real Estate","raw":[3.95,4.542,5.035,8.483,11.257,11.056,12.463,21.578,26.613,30.25,31.303,32.402,32.103,32.06,30.395,28.973,30.929,27.145,26.184],"clean":[3.95,4.542,5.035,8.483,11.257,11.056,12.463,21.578,26.613,30.25,31.303,32.402,32.103,32.06,30.395,28.973,29.123,27.145,26.184],"full":"Hysan Development Company Limited"},{"code":"41","name":"鷹君集團有限公司","theme":"HK Property","sector":"Real Estate","raw":[1.111,1.111,1.111,5.832,7.453,11.539,14.025,17.667,19.48,20.224,19.453,20.04,20.347,20.491,20.102,19.328,24.944,18.365,17.56],"clean":[1.111,1.111,1.111,5.832,7.453,11.539,14.025,17.667,19.48,20.224,19.453,20.04,20.347,20.491,20.102,19.328,18.787,18.365,17.56],"full":"Great Eagle Holdings Limited"},{"code":"1997","name":"九倉置業","theme":"HK Property","sector":"Real Estate","raw":[10.548,11.005,22.444,27.369,31.506,31.113,32.93,35.275,39.512,34.407,33.539,34.735,34.853,32.51,33.05,33.071,49.151,31.375,27.941],"clean":[10.548,11.005,22.444,27.369,31.506,31.113,32.93,35.275,39.512,34.407,33.539,34.735,34.853,32.51,33.05,33.071,32.859,31.375,27.941],"full":"Wharf Real Estate Investment Company Limited"},{"code":"688","name":"中海外","theme":"China Property","sector":"Real Estate","raw":[537.212,591.923,612.38,584.028,560.262,525.196,508.327,495.957,510.777,492.118,565.85,587.516,602.229,697.649,737.674,728.146,361.941,739.685,933.25],"clean":[537.212,591.923,612.38,584.028,560.262,525.196,508.327,495.957,510.777,492.118,565.85,587.516,602.229,697.649,737.674,728.146,744.638,739.685,933.25],"full":"China Overseas Land & Investment Limited"},{"code":"1109","name":"華潤置地","theme":"China Property","sector":"Real Estate","raw":[605.149,645.07,653.723,627.66,662.735,647.824,654.519,652.781,656.973,661.897,699.344,751.143,751.482,787.348,846.906,888.253,631.714,910.158,1003.038],"clean":[605.149,645.07,653.723,627.66,662.735,647.824,654.519,652.781,656.973,661.897,699.344,751.143,751.482,787.348,846.906,888.253,893.205,910.158,1003.038],"full":"China Resources Land Limited"},{"code":"960","name":"龍湖","theme":"China Property","sector":"Real Estate","raw":[364.341,403.689,397.432,419.547,473.644,525.448,567.7,537.224,572.138,616.701,671.603,712.072,748.007,767.784,771.605,813.519,617.474,837.46,856.173],"clean":[364.341,403.689,397.432,419.547,473.644,525.448,567.7,537.224,572.138,616.701,671.603,712.072,748.007,767.784,771.605,813.519,834.903,837.46,856.173],"full":"Longfor Group Holdings Limited"},{"code":"1209","name":"華潤萬象","theme":"China Property","sector":"Real Estate","raw":[111.396,125.973,134.941,135.02,133.893,126.694,122.907,116.051,118.032,128.334,142.438,179.023,187.069,202.583,211.058,214.032,199.514,214.498,217.178],"clean":[111.396,125.973,134.941,135.02,133.893,126.694,122.907,116.051,118.032,128.334,142.438,179.023,187.069,202.583,211.058,214.032,215.454,214.498,217.178],"full":"China Resources Mixc Lifestyle Services Limited"},{"code":"6098","name":"碧桂園服務控股有限公司","theme":"China Property","sector":"Real Estate","raw":[1040.786,1074.614,1028.525,1052.581,971.041,951.274,959.509,937.31,984.489,959.145,963.947,929.576,921.543,868.071,870.407,906.819,925.09,862.098,875.452],"clean":[1040.786,1074.614,1028.525,1052.581,971.041,951.274,959.509,937.31,984.489,959.145,963.947,929.576,921.543,868.071,870.407,906.819,878.995,862.098,875.452],"full":"Country Garden Services Holdings Company Limited"},{"code":"1995","name":"永升服務集團有限公司","theme":"China Property","sector":"Real Estate","raw":[131.552,127.864,124.408,121.802,119.3,117.96,116.856,114.662,106.446,104.412,102.82,98.15,86.408,79.662,78.754,76.84,69.232,72.336,70.808],"clean":[131.552,127.864,124.408,121.802,119.3,117.96,116.856,114.662,106.446,104.412,102.82,98.15,86.408,79.662,78.754,76.84,76.416,72.336,70.808],"full":"Ever Sunshine Services Group Limited"},{"code":"836","name":"華潤電力","theme":"Utilities","sector":"Utilities","raw":[1104.824,1108.499,1141.609,1199.151,1229.612,1244.725,1271.108,1244.86,1244.553,1189.9,1175.647,1202.073,1190.748,1162.79,1191.142,1225.703,481.375,1235.424,1217.793],"clean":[1104.824,1108.499,1141.609,1199.151,1229.612,1244.725,1271.108,1244.86,1244.553,1189.9,1175.647,1202.073,1190.748,1162.79,1191.142,1225.703,1222.178,1235.424,1217.793],"full":"China Resources Power Holdings Company Limited"},{"code":"902","name":"華能國際","theme":"Utilities","sector":"Utilities","raw":[2413.522,2442.37,2380.799,2320.458,2334.586,2266.863,2367.694,2226.366,2210.15,2241.141,2244.064,2142.608,2135.867,2144.506,2225.767,2330.101,1403.995,2610.3,2668.738],"clean":[2413.522,2442.37,2380.799,2320.458,2334.586,2266.863,2367.694,2226.366,2210.15,2241.141,2244.064,2142.608,2135.867,2144.506,2225.767,2330.101,2528.947,2610.3,2668.738],"full":"Hua Neng Power International, Inc."},{"code":"1193","name":"華潤燃氣","theme":"Utilities","sector":"Utilities","raw":[213.414,234.537,263.999,285.724,342.842,340.042,351.061,383.346,393.612,396.132,412.827,437.972,494.094,516.68,507.607,494.375,120.833,502.648,504.537],"clean":[213.414,234.537,263.999,285.724,342.842,340.042,351.061,383.346,393.612,396.132,412.827,437.972,494.094,516.68,507.607,494.375,494.693,502.648,504.537],"full":"China Resources Gas Group Limited"},{"code":"2688","name":"新奧能源","theme":"Utilities","sector":"Utilities","raw":[55.604,59.678,61.948,71.577,123.082,129.071,133.327,134.198,138.431,148.047,157.651,176.454,192.527,194.911,191.46,194.834,91.435,183.193,154.537],"clean":[55.604,59.678,61.948,71.577,123.082,129.071,133.327,134.198,138.431,148.047,157.651,176.454,192.527,194.911,191.46,194.834,191.288,183.193,154.537],"full":"Enn Energy Holdings Limited"},{"code":"916","name":"龍源電力","theme":"Utilities","sector":"Utilities","raw":[1682.2,1674.072,1675.05,1658.05,1659.193,1729.727,1781.249,1740.212,1725.614,1757.704,1764.536,1802.201,1799.74,1766.96,1791.73,1734.498,950.924,1835.608,1899.05],"clean":[1682.2,1674.072,1675.05,1658.05,1659.193,1729.727,1781.249,1740.212,1725.614,1757.704,1764.536,1802.201,1799.74,1766.96,1791.73,1734.498,1791.783,1835.608,1899.05],"full":"China Longyuan Power Group Corporation Limited"},{"code":"1083","name":"港華智慧能源有限公司","theme":"Utilities","sector":"Utilities","raw":[387.255,391.792,394.555,336.117,319.28,318.084,356.329,390.998,465.28,484.317,496.047,492.596,495.743,507.83,504.07,520.082,964.684,519.652,525.636],"clean":[387.255,391.792,394.555,336.117,319.28,318.084,356.329,390.998,465.28,484.317,496.047,492.596,495.743,507.83,504.07,520.082,525.532,519.652,525.636],"full":"Towngas Smart Energy Company Limited"}],"raw":{"by_sector":{"Communication Services":[29423.435,30065.706,4161.55,23415.788,23873.722,23989.201,23914.777,23812.524,23976.305,23763.221,23951.139,24425.927,23915.54,23353.243,23652.748,23511.464,19477.651,23979.291,23252.94],"Consumer Discretionary":[3953.915,3850.161,3879.444,3958.408,4072.115,4262.604,4423.983,4554.685,4661.122,4845.808,4958.955,5031.623,5113.923,5102.834,5195.611,5418.539,5299.212,5054.429,4916.061],"Information Technology":[9277.975,10157.811,10159.23,10303.547,10307.906,10047.592,9952.908,10028.398,10295.566,10134.504,10286.012,10451.99,10530.374,11056.823,11101.874,11156.353,11789.76,11304.75,11767.943],"Industrials":[700.572,795.761,859.694,892.992,918.222,894.341,899.116,988.509,1002.344,1033.619,1016.68,1004.092,1008.921,978.305,999.781,1025.639,727.462,1029.706,1007.155],"Materials":[2965.886,3139.579,3251.498,3507.087,3605.229,3645.755,3694.882,3717.295,3862.899,4143.943,4313.944,4233.125,4182.021,4008.485,3875.858,3406.577,2330.241,3069.378,2871.379],"Consumer Staples":[2990.05,3104.8,3350.221,3360.427,3337.78,3304.892,3250.295,3385.672,3573.338,3675.147,3744.389,3883.616,4015.308,4273.45,4263.377,4321.545,5162.829,4274.567,4049.776],"Financials":[91642.32,95176.41,98437.06,100900.238,103781.448,107232.322,109887.299,111038.5,111541.4,112601.274,114223.425,116833.948,116979.097,118741.725,119443.175,121573.156,42494.746,124851.485,125285.397],"Energy":[22868.113,23577.707,23421.974,23269.39,24247.322,24847.617,25163.179,25822.087,25981.184,25899.281,26214.828,27225.574,27024.622,27955.108,28196.118,28160.968,19669.284,29468.645,29347.367],"Health Care":[2372.486,2380.911,2471.456,2549.84,2801.178,2826.183,2986.874,3003.05,2916.838,2970.507,2857.551,2768.382,2792.2,2685.983,2716.11,2663.854,3468.701,2629.119,2543.935],"Utilities":[6291.037,6429.777,6564.155,6684.959,6961.368,6904.028,7052.994,6840.721,6954.858,7040.352,7160.106,7209.737,7265.328,7301.311,7439.651,7498.016,4512.452,7886.637,7882.467],"Real Estate":[2948.769,3159.785,3159.401,3197.771,3201.023,3194.234,3260.468,3260.602,3399.587,3440.593,3626.222,3762.176,3800.49,3881.584,3993.748,4107.396,3333.883,4095.564,4372.864]},"by_theme":{"MegaTech":[6454.144,6682.176,7027.208,7440.182,7801.303,7611.39,7385.115,7309.523,7579.719,8015.222,8194.684,8673.173,9109.066,9391.885,9738.234,10003.948,10912.807,9809.444,9398.971],"AI":[12.152,12.417,199.616,157.764,106.754,105.195,111.686,127.891,100.929,125.808,121.392,112.188,88.613,171.095,155.82,132.398,103.804,99.731,96.355],"Semi":[2231.801,2652.927,2808.792,2777.438,2861.764,2745.903,2857.98,3054.236,3092.177,3133.958,3133.847,3038.569,2958.491,3021.602,3041.333,2913.467,2763.267,3245.633,3858.653],"Robotics":[37.284,75.926,121.599,153.281,153.511,166.227,178.797,194.813,212.238,251.56,240.094,228.944,236.332,214.427,212.413,230.141,147.5,235.236,252.269],"Industrials":[3070.95,3207.687,3209.587,3475.677,3472.943,3482.555,3481.662,3512.348,3493.761,3485.928,3378.466,3352.78,3273.19,3174.555,3138.114,3160.685,3435.58,3050.518,3045.648],"Platform":[4573.11,4827.293,4707.619,4620.452,4540.524,4576.812,4608.577,4819.184,5224.428,4916.702,4915.859,4904.417,4608.274,5064.057,5098.501,5065.85,5949.434,5239.811,5139.391],"Telecom":[25638.549,26186.84,0.0,18954.591,19195.746,19424.267,19372.805,19265.483,19260.438,18644.396,18862.133,19201.402,18826.373,18252.759,18320.886,18247.038,13888.411,18746.988,18233.815],"Banks":[89046.234,92460.009,95579.828,97969.98,100890.376,104294.189,106600.137,107278.779,107301.394,108282.9,109755.64,112221.7,112265.605,113766.488,114438.297,116918.151,39599.371,120051.901,120598.622],"Financials":[2596.086,2716.401,2857.232,2930.258,2891.072,2938.133,3287.162,3759.721,4240.006,4318.374,4467.785,4612.248,4713.492,4975.237,5004.878,4655.005,2895.375,4799.584,4686.775],"Consumers Discretionary":[3299.491,3219.8,3233.532,3269.506,3308.893,3390.063,3428.155,3495.503,3516.936,3613.094,3681.917,3737.016,3734.695,3749.769,3786.963,3949.285,3543.58,3636.537,3530.14],"Consumers Staples":[1490.74,1585.222,1560.776,1518.029,1471.314,1411.339,1406.926,1356.559,1401.647,1616.691,1715.519,1827.263,2015.616,2049.644,2020.639,2031.017,1944.116,1888.795,1816.54],"Basic Materials":[25223.286,26078.18,26056.043,26129.39,27203.365,27855.884,28256.105,28949.408,29254.773,29475.398,30011.142,30912.572,30664.901,31405.749,31518.446,31002.715,21339.727,31973.946,31595.754],"Healthcare":[2372.486,2380.911,2471.456,2549.84,2801.178,2826.183,2986.874,3003.05,2916.838,2970.507,2857.551,2768.382,2792.2,2685.983,2716.11,2663.854,3468.701,2629.119,2543.935],"Yield":[582.657,681.886,805.034,1025.211,1198.952,1097.883,1003.558,944.963,992.93,1039.877,1140.228,1223.456,1231.767,1240.34,1281.893,1262.964,927.419,1253.939,1157.261],"HK Property":[158.333,190.652,207.992,257.133,280.148,299.838,330.65,406.617,450.732,477.986,480.22,504.696,503.752,478.487,477.344,479.787,528.918,459.329,416.965],"China Property":[2790.436,2969.133,2951.409,2940.638,2920.875,2894.396,2929.818,2853.985,2948.855,2962.607,3146.002,3257.48,3296.738,3403.097,3516.404,3627.609,2804.965,3636.235,3955.899],"Utilities":[5856.819,5910.948,5917.96,5871.077,6008.595,6028.512,6260.768,6119.98,6177.64,6217.241,6250.772,6253.904,6308.719,6293.677,6411.776,6499.593,4013.246,6886.825,6970.291]}},"clean":{"by_sector":{"Communication Services":[29423.435,30065.706,26732.266,23415.788,23873.722,23989.201,23914.777,23812.524,23976.305,23763.221,23951.139,24425.927,23915.54,23353.243,23652.748,23511.464,23694.995,23979.291,23252.94],"Consumer Discretionary":[3953.915,3850.161,3879.444,3958.408,4072.115,4262.604,4423.983,4554.685,4661.122,4845.808,4958.955,5031.623,5113.923,5102.834,5195.611,5418.539,5283.821,5054.429,4916.061],"Information Technology":[9277.975,10157.811,10159.23,10303.547,10307.906,10047.592,9952.908,10028.398,10295.566,10134.504,10286.012,10451.99,10530.374,11056.823,11101.874,11156.353,11363.431,11304.75,11767.943],"Industrials":[700.572,795.761,859.694,892.992,918.222,894.341,899.116,988.509,1002.344,1033.619,1016.68,1004.092,1008.921,978.305,999.781,1025.639,1026.161,1029.706,1007.155],"Materials":[2965.886,3139.579,3251.498,3507.087,3605.229,3645.755,3694.882,3717.295,3862.899,4143.943,4313.944,4233.125,4182.021,4008.485,3875.858,3406.577,3313.622,3069.378,2871.379],"Consumer Staples":[2990.05,3104.8,3350.221,3360.427,3337.78,3304.892,3250.295,3385.672,3573.338,3675.147,3744.389,3883.616,4015.308,4273.45,4263.377,4321.545,4294.936,4274.567,4049.776],"Financials":[91642.32,95176.41,98437.06,100900.238,103781.448,107232.322,109887.299,111038.5,111541.4,112601.274,114223.425,116833.948,116979.097,118741.725,119443.175,121573.156,123954.076,124851.485,125285.397],"Energy":[22868.113,23577.707,23421.974,23269.39,24247.322,24847.617,25163.179,25822.087,25981.184,25899.281,26214.828,27225.574,27024.622,27955.108,28196.118,28160.968,28556.573,29468.645,29347.367],"Health Care":[2372.486,2380.911,2471.456,2549.84,2801.178,2826.183,2986.874,3003.05,2916.838,2970.507,2857.551,2768.382,2792.2,2685.983,2716.11,2663.854,2705.046,2629.119,2543.935],"Utilities":[6291.037,6429.777,6564.155,6684.959,6961.368,6904.028,7052.994,6840.721,6954.858,7040.352,7160.106,7209.737,7265.328,7301.311,7439.651,7498.016,7753.636,7886.637,7882.467],"Real Estate":[2948.769,3159.785,3159.401,3197.771,3201.023,3194.234,3260.468,3260.602,3399.587,3440.593,3626.222,3762.176,3800.49,3881.584,3993.748,4107.396,4130.378,4095.564,4372.864]},"by_theme":{"MegaTech":[6454.144,6682.176,7027.208,7440.182,7801.303,7611.39,7385.115,7309.523,7579.719,8015.222,8194.684,8673.173,9109.066,9391.885,9738.234,10003.948,10081.569,9809.444,9398.971],"AI":[12.152,12.417,199.616,157.764,106.754,105.195,111.686,127.891,100.929,125.808,121.392,112.188,88.613,171.095,155.82,132.398,118.431,99.731,96.355],"Semi":[2231.801,2652.927,2808.792,2777.438,2861.764,2745.903,2857.98,3054.236,3092.177,3133.958,3133.847,3038.569,2958.491,3021.602,3041.333,2913.467,3026.448,3245.633,3858.653],"Robotics":[37.284,75.926,121.599,153.281,153.511,166.227,178.797,194.813,212.238,251.56,240.094,228.944,236.332,214.427,212.413,230.141,217.128,235.236,252.269],"Industrials":[3070.95,3207.687,3209.587,3475.677,3472.943,3482.555,3481.662,3512.348,3493.761,3485.928,3378.466,3352.78,3273.19,3174.555,3138.114,3160.685,3195.941,3050.518,3045.648],"Platform":[4573.11,4827.293,4707.619,4620.452,4540.524,4576.812,4608.577,4819.184,5224.428,4916.702,4915.859,4904.417,4608.274,5064.057,5098.501,5065.85,5131.877,5239.811,5139.391],"Telecom":[25638.549,26186.84,22570.716,18954.591,19195.746,19424.267,19372.805,19265.483,19260.438,18644.396,18862.133,19201.402,18826.373,18252.759,18320.886,18247.038,18419.009,18746.988,18233.815],"Banks":[89046.234,92460.009,95579.828,97969.98,100890.376,104294.189,106600.137,107278.779,107301.394,108282.9,109755.64,112221.7,112265.605,113766.488,114438.297,116918.151,119321.749,120051.901,120598.622],"Financials":[2596.086,2716.401,2857.232,2930.258,2891.072,2938.133,3287.162,3759.721,4240.006,4318.374,4467.785,4612.248,4713.492,4975.237,5004.878,4655.005,4632.327,4799.584,4686.775],"Consumers Discretionary":[3299.491,3219.8,3233.532,3269.506,3308.893,3390.063,3428.155,3495.503,3516.936,3613.094,3681.917,3737.016,3734.695,3749.769,3786.963,3949.285,3830.23,3636.537,3530.14],"Consumers Staples":[1490.74,1585.222,1560.776,1518.029,1471.314,1411.339,1406.926,1356.559,1401.647,1616.691,1715.519,1827.263,2015.616,2049.644,2020.639,2031.017,1959.272,1888.795,1816.54],"Basic Materials":[25223.286,26078.18,26056.043,26129.39,27203.365,27855.884,28256.105,28949.408,29254.773,29475.398,30011.142,30912.572,30664.901,31405.749,31518.446,31002.715,31288.293,31973.946,31595.754],"Healthcare":[2372.486,2380.911,2471.456,2549.84,2801.178,2826.183,2986.874,3003.05,2916.838,2970.507,2857.551,2768.382,2792.2,2685.983,2716.11,2663.854,2705.046,2629.119,2543.935],"Yield":[582.657,681.886,805.034,1025.211,1198.952,1097.883,1003.558,944.963,992.93,1039.877,1140.228,1223.456,1231.767,1240.34,1281.893,1262.964,1264.556,1253.939,1157.261],"HK Property":[158.333,190.652,207.992,257.133,280.148,299.838,330.65,406.617,450.732,477.986,480.22,504.696,503.752,478.487,477.344,479.787,486.767,459.329,416.965],"China Property":[2790.436,2969.133,2951.409,2940.638,2920.875,2894.396,2929.818,2853.985,2948.855,2962.607,3146.002,3257.48,3296.738,3403.097,3516.404,3627.609,3643.611,3636.235,3955.899],"Utilities":[5856.819,5910.948,5917.96,5871.077,6008.595,6028.512,6260.768,6119.98,6177.64,6217.241,6250.772,6253.904,6308.719,6293.677,6411.776,6499.593,6754.421,6886.825,6970.291]}},"flagged":["2025-02","2026-04"],"apr_corrected":true};
+const MONMS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = s => { const [y,m]=s.split('-'); return MONMS[+m-1]+" '"+y.slice(2); };
+const dates = DATA.dates;                    // idx0 = Dec-2024 baseline
+const mIdx = dates.map((_,i)=>i).slice(1);   // monthly since Jan-2025
+const PAL = ['#cb1214','#333c40','#5b8aa6','#b0894e','#4a6b5a','#8c4a4c','#2f5163','#a9772f','#6f7d84','#7d5a6b','#86a68f','#3f5a78','#c07a55','#556b2f','#9aa0a6','#b5555a','#5d6d7e'];
+const RANGES={'1M':2,'3M':4,'6M':7,'1Y':13,'All':mIdx.length};
+let dm='clean',grp='by_sector',met='level',typ='area',rng='All',heatmode='pct',ddKey=null,ddPeriod='mom',chart=null,monthChart=null,monthIdx=dates.length-1,tab='overview';
+const FULLM=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmtLong=s=>{const[y,m]=s.split('-');return FULLM[+m-1]+' '+y;};
+
+const G = ()=> DATA[dm][grp];
+const stField = ()=> dm;                       // 'clean' | 'raw'
+const groupField = ()=> grp==='by_sector'?'sector':'theme';
+function groups(){ const g=G(); return Object.keys(g).sort((a,b)=>g[b].at(-1)-g[a].at(-1)); }
+function sgn(x){return x>=0?'+':'';}
+function num(x){ const a=Math.abs(x); return a>=1000?(x/1000).toFixed(1)+'k':a>=10?x.toFixed(0):x.toFixed(1); }
+function pct(x){ return sgn(x)+x.toFixed(1)+'%'; }
+function totAt(j){ const g=G(); let t=0; for(const k in g) t+=g[k][j]; return t; }
+function windowIdx(){ const c=Math.min(RANGES[rng]||mIdx.length, mIdx.length); return mIdx.slice(-Math.max(2,c)); }
+
+/* ---------- KPIs ---------- */
+function buildKPIs(){
+  const g=G(), keys=groups();
+  const totL=totAt(dates.length-1), totF=totAt(1);
+  const chg=keys.map(k=>({k,p:g[k][1]?(g[k].at(-1)/g[k][1]-1)*100:0}));
+  const up=[...chg].sort((a,b)=>b.p-a.p)[0], dn=[...chg].sort((a,b)=>a.p-b.p)[0];
+  const totP=(totL/totF-1)*100;
+  document.getElementById('kpis').innerHTML=[
+    ['Total southbound holding','Jun-2026 · all groups',num(totL),''],
+    ['Change since Jan-2025','net across '+keys.length+' groups',pct(totP),totP>=0?'pos':'neg'],
+    ['Top inflow group','since Jan-2025',up.k,'pos',pct(up.p)],
+    ['Top outflow group','since Jan-2025',dn.k,'neg',pct(dn.p)]
+  ].map(r=>`<div class="kpi"><div class="t">${r[0]}</div><div class="v ${r[3]}">${r[2]}</div><div class="d">${r[4]?'<b class="'+r[3]+'">'+r[4]+'</b> · ':''}${r[1]}</div></div>`).join('');
+}
+
+/* ---------- main chart ---------- */
+function draw(){
+  const g=G(), keys=groups(), W=windowIdx(), base=W[0];
+  const labels=W.map(j=>fmtDate(dates[j]));
+  const isBar=(met==='netflow');
+  const isRebase=(met==='rebase');
+  const stackArea=(typ==='area' && (met==='level'||met==='share') );
+  // raw transformed values per group over window
+  const raw={};
+  keys.forEach(k=>{ raw[k]=W.map(j=>{
+    if(met==='mom') return g[k][j-1]?(g[k][j]/g[k][j-1]-1)*100:0;
+    if(met==='netflow') return g[k][j]-g[k][j-1];
+    if(met==='share'){let t=totAt(j);return t?g[k][j]/t*100:0;}
+    if(met==='rebase') return g[k][base]?g[k][j]/g[k][base]*100:0;
+    return g[k][j];
+  }); });
+  let datasets;
+  if(stackArea){
+    // manual cumulative stacking so it always renders correctly
+    const cum=keys.map(()=>W.map(()=>0));
+    W.forEach((_,t)=>{let run=0;keys.forEach((k,i)=>{run+=raw[k][t];cum[i][t]=run;});});
+    datasets=keys.map((k,i)=>{const c=PAL[i%PAL.length];
+      return {label:k,data:cum[i],_raw:raw[k],borderColor:c,backgroundColor:c+'d9',pointRadius:0,borderWidth:1,tension:.25,fill:i===0?'origin':'-1'};});
+  } else {
+    datasets=keys.map((k,i)=>{const c=PAL[i%PAL.length];
+      return {label:k,data:raw[k],borderColor:c,backgroundColor:isBar?c:c+'22',pointRadius:isRebase?0:0,borderWidth:2,tension:.25,fill:false};});
+  }
+  const cfg={type:isBar?'bar':'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:11,boxHeight:11,font:{size:11},usePointStyle:true,pointStyle:'rectRounded'}},
+        tooltip:{callbacks:{label:c=>{const v=stackArea?c.dataset._raw[c.dataIndex]:c.parsed.y;
+          const t=(met==='level'||met==='netflow')?(sgn(met==='netflow'?v:0)+num(v)):met==='rebase'?v.toFixed(1):v.toFixed(1)+'%';
+          return c.dataset.label+': '+t;}}}},
+      scales:{x:{stacked:isBar,grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:10}},
+        y:{stacked:isBar,grid:{color:'#eef0f3'},ticks:{font:{size:10},callback:v=>(met==='level'||met==='netflow')?num(v):met==='rebase'?v:v+'%'}}}}};
+  if(chart)chart.destroy();
+  chart=new Chart(document.getElementById('mainChart'),cfg);
+  const nm=grp==='by_theme'?'Theme':'Sector';
+  const mlabel={level:'holding level',share:'share of total',rebase:'rebased to 100',mom:'MoM % change',netflow:'net flow (absolute Δ)'}[met];
+  document.getElementById('mainTitle').textContent=nm+' — '+mlabel+'  ·  '+rng;
+  document.getElementById('mainCap').textContent={
+    level:'Stacked holding value by group. Switch to Lines to compare trajectories.',
+    share:'Each group as % of total tracked southbound holding.',
+    rebase:'Every group indexed to 100 at the start of the selected range — compares relative performance regardless of size.',
+    mom:'Percent change in holding vs the prior month.',
+    netflow:'Absolute change in holding vs the prior month — where the real money moved.'}[met];
+  // area toggle only meaningful for level/share
+  document.querySelectorAll('#typ button').forEach(b=>b.disabled=!(met==='level'||met==='share'));
+}
+
+/* ---------- heatmap ---------- */
+function heat(){
+  const g=G(), keys=groups();
+  const colP=p=>{ if(p==null)return '#fff'; const c=Math.max(-10,Math.min(10,p))/10,t=Math.abs(c);
+    return c>=0?`rgba(15,157,88,${.12+.78*t})`:`rgba(217,48,37,${.12+.78*t})`; };
+  const alld=[]; keys.forEach(k=>mIdx.forEach(j=>alld.push(Math.abs(g[k][j]-g[k][j-1]))));
+  const srt=alld.sort((a,b)=>a-b), sc=srt[Math.floor(srt.length*0.9)]||1;
+  const colA=v=>{const c=Math.max(-1,Math.min(1,v/sc)),t=Math.abs(c);return c>=0?`rgba(15,157,88,${.12+.78*t})`:`rgba(217,48,37,${.12+.78*t})`;};
+  let h='<thead><tr><th>'+(grp==='by_theme'?'Theme':'Sector')+'</th>'+mIdx.map(j=>`<th>${fmtDate(dates[j])}</th>`).join('')+'</tr></thead><tbody>';
+  keys.forEach(k=>{ h+='<tr><td>'+k+'</td>'+mIdx.map(j=>{
+      const dv=g[k][j]-g[k][j-1], p=g[k][j-1]?(g[k][j]/g[k][j-1]-1)*100:null;
+      if(heatmode==='pct'){const tc=(p!=null&&Math.abs(p)>=6)?'#fff':'#111';return `<td class="cell" data-k="${k}" data-j="${j}" style="background:${colP(p)};color:${tc}">${p==null?'–':sgn(p)+p.toFixed(0)}</td>`;}
+      const strong=Math.abs(dv)>=sc*0.6;return `<td class="cell" data-k="${k}" data-j="${j}" style="background:${colA(dv)};color:${strong?'#fff':'#111'}">${Math.abs(dv)<sc*0.05?'·':sgn(dv)+num(Math.abs(dv))}</td>`;
+    }).join('')+'</tr>'; });
+  document.getElementById('heat').innerHTML=h+'</tbody>';
+}
+
+/* ---------- snapshot ranking ---------- */
+function rank(){
+  const g=G(), keys=groups(), max=Math.max(...keys.map(k=>g[k].at(-1)));
+  let h='<thead><tr><th>'+(grp==='by_theme'?'Theme':'Sector')+'</th><th>Holding</th><th>MoM</th><th>Since Jan-25</th></tr></thead><tbody>';
+  keys.forEach(k=>{ const l=g[k].at(-1),prev=g[k].at(-2),bs=g[k][1];
+    const mom=prev?(l/prev-1)*100:0, si=bs?(l/bs-1)*100:0;
+    h+=`<tr class="clk" data-k="${k}"><td>${k}</td><td><span class="bar" style="width:${Math.max(2,l/max*70)}px"></span> ${num(l)}</td><td class="${mom>=0?'pos':'neg'}">${pct(mom)}</td><td class="${si>=0?'pos':'neg'}">${pct(si)}</td></tr>`; });
+  const el=document.getElementById('rank'); el.innerHTML=h+'</tbody>';
+  document.getElementById('latTitle').textContent='Latest snapshot — '+fmtDate(dates.at(-1));
+  el.querySelectorAll('.clk').forEach(r=>{r.style.cursor='pointer';r.onclick=()=>{ddKey=r.dataset.k;document.getElementById('ddSel').value=ddKey;drill();document.querySelector('.dd').scrollIntoView({behavior:'smooth',block:'center'});};});
+}
+
+/* ---------- drill-down ---------- */
+function fillSel(){ const sel=document.getElementById('ddSel'),keys=groups();
+  if(!ddKey||!keys.includes(ddKey)) ddKey=keys[0];
+  sel.innerHTML=keys.map(k=>`<option ${k===ddKey?'selected':''}>${k}</option>`).join(''); }
+function drill(){
+  const gf=groupField(),f=stField();
+  const members=DATA.stocks.filter(s=>s[gf]===ddKey);
+  const val=s=>s[f];
+  const max=Math.max(...members.map(s=>val(s).at(-1)),1);
+  const byHold=[...members].sort((a,b)=>val(b).at(-1)-val(a).at(-1)).slice(0,8);
+  let hh='<thead><tr><th>Stock</th><th>Holding</th><th>MoM</th></tr></thead><tbody>';
+  byHold.forEach(s=>{const l=val(s).at(-1),p=val(s).at(-2),mom=p?(l/p-1)*100:0;
+    hh+=`<tr><td>${s.full||s.name} <span class="tag">${s.name} · ${s.code}</span></td><td><span class="bar" style="width:${Math.max(2,l/max*60)}px"></span> ${num(l)}</td><td class="${mom>=0?'pos':'neg'}">${l&&p?pct(mom):'–'}</td></tr>`;});
+  document.getElementById('ddHold').innerHTML=hh+'</tbody>';
+  const base=ddPeriod==='mom'?dates.length-2:1;
+  const mv=members.map(s=>({s,d:val(s).at(-1)-val(s)[base],p:val(s)[base]?(val(s).at(-1)/val(s)[base]-1)*100:null}))
+                  .filter(m=>Math.abs(m.d)>0.001).sort((a,b)=>b.d-a.d);
+  const top=mv.slice(0,5),bot=mv.slice(-5).reverse();
+  const rr=arr=>arr.map(m=>`<tr><td>${m.s.full||m.s.name} <span class="tag">${m.s.name} · ${m.s.code}</span></td><td class="${m.d>=0?'pos':'neg'}">${sgn(m.d)}${num(Math.abs(m.d))}</td><td class="${m.d>=0?'pos':'neg'}">${m.p==null?'new':pct(m.p)}</td></tr>`).join('');
+  document.getElementById('ddMove').innerHTML='<thead><tr><th>Stock</th><th>Δ Holding</th><th>%</th></tr></thead><tbody>'
+    +'<tr><td colspan="3" class="mvh" style="padding-top:2px">Inflows</td></tr>'+rr(top)
+    +'<tr><td colspan="3" class="mvh" style="padding-top:8px">Outflows</td></tr>'+rr(bot)+'</tbody>';
+  const per=ddPeriod==='mom'?('vs '+fmtDate(dates.at(-2))):'since Jan-25';
+  document.getElementById('mvHdr').textContent='Biggest movers ('+per+')';
+  document.getElementById('ddCap').textContent=ddKey+' — '+members.length+' stocks. Change measured '+per+'. Click any group in the snapshot table to jump here.';
+}
+
+/* ---------- new entrants ---------- */
+function entrants(){
+  const f=stField();
+  const list=DATA.stocks.filter(s=>s[f][0]<0.001 && Math.max(...s[f])>0.5)
+    .map(s=>({s,fi:s[f].findIndex(v=>v>0.001)}))
+    .sort((a,b)=> b.fi-a.fi || b.s[f].at(-1)-a.s[f].at(-1));
+  let h='<thead><tr><th>Stock</th><th>Sector</th><th>Entered</th><th>Holding</th></tr></thead><tbody>';
+  list.forEach(({s,fi})=> h+=`<tr><td>${s.full||s.name} <span class="tag">${s.name} · ${s.code}</span></td><td class="tag">${s.sector}</td><td>${fmtDate(dates[fi])}</td><td>${num(s[f].at(-1))}</td></tr>`);
+  if(!list.length) h+='<tr><td colspan="4" class="tag">None in window.</td></tr>';
+  document.getElementById('entrants').innerHTML=h+'</tbody>';
+}
+
+/* ---------- momentum / acceleration ---------- */
+function accel(){
+  const g=G(), keys=groups();
+  const rows=keys.map(k=>{const s=g[k],last=s.at(-1)-s.at(-2),
+    prior=((s.at(-2)-s.at(-3))+(s.at(-3)-s.at(-4))+(s.at(-4)-s.at(-5)))/3;
+    return {k,last,prior,acc:last-prior};}).sort((a,b)=>b.acc-a.acc);
+  let h='<thead><tr><th>'+(grp==='by_theme'?'Theme':'Sector')+'</th><th>1m flow</th><th>3m avg</th><th>Accel</th></tr></thead><tbody>';
+  rows.forEach(r=>{const ar=r.acc>0?'▲':'▼';
+    h+=`<tr><td>${r.k}</td><td class="${r.last>=0?'pos':'neg'}">${sgn(r.last)}${num(Math.abs(r.last))}</td><td class="${r.prior>=0?'pos':'neg'}">${sgn(r.prior)}${num(Math.abs(r.prior))}</td><td class="${r.acc>=0?'pos':'neg'}">${ar} ${sgn(r.acc)}${num(Math.abs(r.acc))}</td></tr>`;});
+  document.getElementById('accel').innerHTML=h+'</tbody>';
+}
+
+/* ---------- wiring ---------- */
+/* ---------- monthly review ---------- */
+function fillMonthSel(){ document.getElementById('mSel').innerHTML=mIdx.map(j=>`<option value="${j}" ${j===monthIdx?'selected':''}>${fmtLong(dates[j])}</option>`).join(''); }
+function renderMonthly(){
+  const g=G(),keys=Object.keys(g),j=monthIdx,p=j-1,f=stField();
+  const rows=keys.map(k=>{const lv=g[k][j],pv=g[k][p],d=lv-pv,pc=pv?d/pv*100:0;return{k,lv,pv,d,pc};}).sort((a,b)=>b.pc-a.pc);
+  const totL=keys.reduce((s,k)=>s+g[k][j],0),totP=keys.reduce((s,k)=>s+g[k][p],0),totD=totL-totP,totPc=totP?totD/totP*100:0;
+  const up=rows.filter(r=>r.d>0).length,dn=rows.filter(r=>r.d<0).length,gw=grp==='by_theme'?'themes':'sectors';
+  const lead=rows[0],lag=rows[rows.length-1];
+  const smv=DATA.stocks.map(s=>({s,d:s[f][j]-s[f][p]})).filter(m=>Math.abs(m.d)>0.001).sort((a,b)=>b.d-a.d);
+  const inn=smv.slice(0,6),out=smv.slice(-6).reverse();
+  const ent=DATA.stocks.filter(s=>s[f].findIndex(v=>v>0.001)===j && s[f][j]>0.5);
+  document.getElementById('mTitle').textContent='Monthly review — '+fmtLong(dates[j]);
+  document.getElementById('mChartTitle').textContent='Industry performance — '+fmtDate(dates[j]);
+  document.getElementById('wrapHead').textContent=fmtLong(dates[j])+' market wrap';
+  let t=`In ${fmtLong(dates[j])}, total tracked southbound holdings <b class="${totD>=0?'pos':'neg'}">${totD>=0?'rose':'fell'} ${Math.abs(totPc).toFixed(1)}%</b> (${sgn(totD)}${num(totD)}) to ${num(totL)}, versus ${fmtLong(dates[p])}. `;
+  t+=`${up} of ${rows.length} ${gw} drew inflows${dn?` and ${dn} saw outflows`:''}. `;
+  t+=`<b>${lead.k}</b> led at ${pct(lead.pc)}`;
+  if(lag.pc<0) t+=`, while <b>${lag.k}</b> lagged at ${pct(lag.pc)}`;
+  t+='. ';
+  if(inn.length&&inn[0].d>0) t+=`The single biggest accumulation was ${inn[0].s.name} (${sgn(inn[0].d)}${num(inn[0].d)})`;
+  if(out.length&&out[0].d<0) t+=`${inn.length&&inn[0].d>0?'; the largest reduction was ':'The largest reduction was '}${out[0].s.name} (${sgn(out[0].d)}${num(out[0].d)})`;
+  t+='.';
+  if(ent.length) t+=` New to southbound this month: ${ent.map(s=>s.name).join(', ')}.`;
+  if((dates[j]==='2025-02'||dates[j]==='2026-04')&&dm==='raw') t+=` <span class="neg">Note: partial-data month in the raw file — switch to Cleaned for a representative read.</span>`;
+  document.getElementById('wrapText').innerHTML=t;
+  document.getElementById('wrapStat').innerHTML=[
+    ['Total holding',num(totL),''],['Net change',sgn(totD)+num(totD),totD>=0?'pos':'neg'],
+    ['% change',pct(totPc),totPc>=0?'pos':'neg'],[gw.charAt(0).toUpperCase()+gw.slice(1)+' up / down',up+' / '+dn,'']
+  ].map(s=>`<div class="b"><div class="t">${s[0]}</div><div class="v ${s[2]}">${s[1]}</div></div>`).join('');
+  const labels=rows.map(r=>r.k),vals=rows.map(r=>+r.pc.toFixed(2)),cols=rows.map(r=>r.pc>=0?'#0f9d58':'#d93025');
+  const cfg={type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:cols,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      onClick:(evt,els)=>{if(els.length)openCell(rows[els[0].index].k,monthIdx);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>pct(c.parsed.x)}}},
+      scales:{x:{grid:{color:'#eef0f3'},ticks:{callback:v=>v+'%',font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:11}}}}}};
+  if(monthChart)monthChart.destroy();
+  monthChart=new Chart(document.getElementById('monthChart'),cfg);
+  let h='<thead><tr><th>'+(grp==='by_theme'?'Theme':'Sector')+'</th><th>Holding</th><th>Δ</th><th>MoM %</th></tr></thead><tbody>';
+  rows.forEach(r=>{h+=`<tr class="clk" data-k="${r.k}" style="cursor:pointer"><td>${r.k}</td><td>${num(r.lv)}</td><td class="${r.d>=0?'pos':'neg'}">${sgn(r.d)}${num(Math.abs(r.d))}</td><td class="${r.pc>=0?'pos':'neg'}">${pct(r.pc)}</td></tr>`;});
+  document.getElementById('mTable').innerHTML=h+'</tbody>';
+  const st=arr=>'<thead><tr><th>Stock</th><th>Sector</th><th>Δ Holding</th></tr></thead><tbody>'+arr.map(m=>`<tr><td>${m.s.full||m.s.name} <span class="tag">${m.s.name} · ${m.s.code}</span></td><td class="tag">${m.s.sector}</td><td class="${m.d>=0?'pos':'neg'}">${sgn(m.d)}${num(Math.abs(m.d))}</td></tr>`).join('')+'</tbody>';
+  document.getElementById('mIn').innerHTML=st(inn);
+  document.getElementById('mOut').innerHTML=st(out);
+}
+/* ---------- cell drill-down modal ---------- */
+function openCell(k,j){
+  const gf=groupField(),f=stField(),g=G();
+  if(!(k in g)||j<1) return;
+  const members=DATA.stocks.filter(s=>s[gf]===k);
+  const lvl=g[k][j],prev=g[k][j-1],mom=prev?(lvl/prev-1)*100:0,d=lvl-prev;
+  const mv=members.map(s=>{const a=s[f][j],p=s[f][j-1];return{s,a,p,d:a-p,pc:p?(a/p-1)*100:null};})
+                  .filter(m=>Math.abs(m.d)>0.001);
+  const ups=mv.filter(m=>m.d>0).sort((a,b)=>b.d-a.d).slice(0,5);
+  const dns=mv.filter(m=>m.d<0).sort((a,b)=>a.d-b.d).slice(0,5);
+  document.getElementById('mdTitle').textContent=k+' — '+fmtLong(dates[j]);
+  document.getElementById('mdSub').innerHTML=`Group southbound holding ${d>=0?'rose':'fell'} <b class="${d>=0?'pos':'neg'}">${pct(mom)}</b> (${sgn(d)}${num(Math.abs(d))}) vs ${fmtLong(dates[j-1])} · ${members.length} stocks`;
+  const row=m=>`<tr><td>${m.s.full||m.s.name} <span class="tag">${m.s.name} · ${m.s.code}</span></td><td class="${m.d>=0?'pos':'neg'}">${sgn(m.d)}${num(Math.abs(m.d))}</td><td class="${m.d>=0?'pos':'neg'}">${m.pc==null?'new':pct(m.pc)}</td></tr>`;
+  const head='<thead><tr><th>Ticker</th><th>Δ</th><th>%</th></tr></thead><tbody>';
+  document.getElementById('mdUp').innerHTML=head+(ups.length?ups.map(row).join(''):'<tr><td colspan="3" class="tag">No inflows</td></tr>')+'</tbody>';
+  document.getElementById('mdDn').innerHTML=head+(dns.length?dns.map(row).join(''):'<tr><td colspan="3" class="tag">No outflows</td></tr>')+'</tbody>';
+  document.getElementById('ov').classList.add('show');
+}
+function closeCell(){document.getElementById('ov').classList.remove('show');}
+
+function showTab(t){ tab=t;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.getElementById('tab-overview').hidden=(t!=='overview');
+  document.getElementById('tab-monthly').hidden=(t!=='monthly');
+  document.querySelectorAll('.ovonly').forEach(e=>e.style.display=(t==='overview')?'':'none');
+  if(t==='overview') renderTop(); else renderMonthly();
+}
+
+function renderTop(){buildKPIs();draw();heat();accel();}
+function renderAll(){renderTop();fillSel();drill();entrants();}
+
+document.querySelectorAll('.controls .seg, #heatmode').forEach(seg=>seg.addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON'||e.target.disabled)return;
+  seg.querySelectorAll('button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');
+  const v=e.target.dataset.v,id=seg.id;
+  if(id==='grp'){grp=v;ddKey=null; tab==='monthly'?renderMonthly():renderAll();}
+  else if(id==='dm'){dm=v; tab==='monthly'?renderMonthly():renderAll();}
+  else if(id==='met'){met=v;draw();}
+  else if(id==='typ')draw();
+  else if(id==='rng')draw();
+  else if(id==='heatmode'){heatmode=v;heat();}
+}));
+document.getElementById('ddPeriod').addEventListener('click',e=>{if(e.target.tagName!=='BUTTON')return;
+  document.querySelectorAll('#ddPeriod button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');ddPeriod=e.target.dataset.v;drill();});
+document.getElementById('ddSel').addEventListener('change',e=>{ddKey=e.target.value;drill();});
+document.getElementById('tabs').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')showTab(e.target.dataset.t);});
+document.getElementById('mSel').addEventListener('change',e=>{monthIdx=+e.target.value;renderMonthly();});
+document.getElementById('mPrev').addEventListener('click',()=>{if(monthIdx>1){monthIdx--;fillMonthSel();renderMonthly();}});
+document.getElementById('mNext').addEventListener('click',()=>{if(monthIdx<dates.length-1){monthIdx++;fillMonthSel();renderMonthly();}});
+fillMonthSel();
+document.getElementById('heat').addEventListener('click',e=>{const td=e.target.closest('td.cell');if(td)openCell(td.dataset.k,+td.dataset.j);});
+document.getElementById('mTable').addEventListener('click',e=>{const tr=e.target.closest('tr.clk');if(tr)openCell(tr.dataset.k,monthIdx);});
+document.getElementById('mdX').addEventListener('click',closeCell);
+document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeCell();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCell();});
+
+document.getElementById('note').innerHTML='⚠︎ Two source months were partial CCASS snapshots. <b>Apr-2026</b> is corrected using your actual A003 + A004 CCASS files (30-Apr-2026); <b>Feb-2025</b> (telecom names missing) is interpolated from neighbours. Switch to <b>Raw</b> to see the file as-is.';
+document.getElementById('foot').innerHTML='Data extracted from the Monitor tab of the uploaded workbook — 107 HK-listed stocks, month-end CCASS southbound holdings (values in the source file\'s own units). Dec-2024 is the baseline for the first monthly change. <b>Theme</b> uses the workbook\'s curated buckets; <b>GICS Sector</b> uses column F. <b>Rebase = 100</b> indexes each group to 100 at the start of the selected range. Snapshot — re-run with an updated file to refresh.';
+renderAll();
+</script>
+</body>
+</html>
