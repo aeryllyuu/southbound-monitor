@@ -134,6 +134,32 @@ thead th{color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;font-size
       <p class="cap">Green = accumulation that month; red = reduction. Rows are the theme's companies; click a company name for its history.</p>
       <div class="heatwrap"><table class="htab" id="cHeat"></table></div>
     </div>
+
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0" id="cmTitle">Monthly analysis</h2>
+      <div class="mnav">
+        <button class="nb" id="cmPrev">‹</button>
+        <select id="cmSel"></select>
+        <button class="nb" id="cmNext">›</button>
+      </div>
+    </div>
+    <div class="wrapcard">
+      <div class="big" id="cmWrapHead">Monthly wrap</div>
+      <p id="cmWrapText"></p>
+      <div class="stat" id="cmStat"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2 id="cmChartTitle">Company performance</h2>
+        <p class="cap">Month-over-month % change in southbound holding for each company that month.</p>
+        <div class="chartbox" style="height:340px"><canvas id="cmChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Company detail</h2>
+        <p class="cap">Holding, absolute change and % change for the month. Click a row for full history.</p>
+        <table class="rank" id="cmTable"></table>
+      </div>
+    </div>
   </div>
 
   <div id="tab-overview">
@@ -258,7 +284,7 @@ const dates = DATA.dates;                    // idx0 = Dec-2024 baseline
 const mIdx = dates.map((_,i)=>i).slice(1);   // monthly since Jan-2025
 const PAL = ['#cb1214','#333c40','#5b8aa6','#b0894e','#4a6b5a','#8c4a4c','#2f5163','#a9772f','#6f7d84','#7d5a6b','#86a68f','#3f5a78','#c07a55','#556b2f','#9aa0a6','#b5555a','#5d6d7e'];
 const RANGES={'1M':2,'3M':4,'6M':7,'1Y':13,'All':mIdx.length};
-let dm='clean',grp='by_sector',met='level',typ='area',rng='All',heatmode='pct',ddKey=null,ddPeriod='mom',chart=null,monthChart=null,monthIdx=dates.length-1,tab='companies',compChart=null,compTheme=null;
+let dm='clean',grp='by_sector',met='level',typ='area',rng='All',heatmode='pct',ddKey=null,ddPeriod='mom',chart=null,monthChart=null,monthIdx=dates.length-1,tab='companies',compChart=null,compTheme=null,cmChart=null,cMonthIdx=dates.length-1;
 const THEMES=[...new Set(DATA.stocks.map(s=>s.theme))];
 const FULLM=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const fmtLong=s=>{const[y,m]=s.split('-');return FULLM[+m-1]+' '+y;};
@@ -513,6 +539,47 @@ function renderCompanies(){
   let hh='<thead><tr><th>Company</th>'+mIdx.map(j=>`<th>${fmtDate(dates[j])}</th>`).join('')+'</tr></thead><tbody>';
   trows.forEach(s=>{ hh+=`<tr><td class="cclk" data-code="${s.code}" style="cursor:pointer">${s.name} <span class="tag">${s.code}</span></td>`+mIdx.map(j=>{const p=s[f][j-1]?(s[f][j]/s[f][j-1]-1)*100:null;const tc=(p!=null&&Math.abs(p)>=6)?'#fff':'#111';return `<td style="background:${colP(p)};color:${tc}">${p==null?'–':sgn(p)+p.toFixed(0)}</td>`;}).join('')+'</tr>'; });
   document.getElementById('cHeat').innerHTML=hh+'</tbody>';
+  renderCompanyMonth();
+}
+function fillCMonthSel(){ document.getElementById('cmSel').innerHTML=mIdx.map(j=>`<option value="${j}" ${j===cMonthIdx?'selected':''}>${fmtLong(dates[j])}</option>`).join(''); }
+function renderCompanyMonth(){
+  const f=stField(), members=companyMembers(), j=cMonthIdx, p=j-1;
+  document.getElementById('cmTitle').textContent='Monthly analysis — '+compTheme;
+  document.getElementById('cmChartTitle').textContent='Company performance — '+fmtDate(dates[j]);
+  document.getElementById('cmWrapHead').textContent=compTheme+' · '+fmtLong(dates[j])+' wrap';
+  if(!members.length){ document.getElementById('cmWrapText').textContent='No southbound holdings for this theme.'; document.getElementById('cmStat').innerHTML=''; document.getElementById('cmTable').innerHTML=''; if(cmChart)cmChart.destroy(); return; }
+  const rows=members.map(s=>{const lv=s[f][j],pv=s[f][p],d=lv-pv,pc=pv?d/pv*100:(lv>0?null:0);return{s,lv,pv,d,pc};})
+    .sort((a,b)=>(b.pc==null?1e9:b.pc)-(a.pc==null?1e9:a.pc));
+  const totL=members.reduce((a,s)=>a+s[f][j],0),totP=members.reduce((a,s)=>a+s[f][p],0),totD=totL-totP,totPc=totP?totD/totP*100:0;
+  const up=rows.filter(r=>r.d>0).length,dn=rows.filter(r=>r.d<0).length;
+  const lead=rows.find(r=>r.pc!=null)||rows[0], lag=rows[rows.length-1];
+  const byd=[...rows].sort((a,b)=>b.d-a.d), gain=byd[0], loss=byd[byd.length-1];
+  let t=`In ${fmtLong(dates[j])}, ${compTheme} southbound holdings <b class="${totD>=0?'pos':'neg'}">${totD>=0?'rose':'fell'} ${Math.abs(totPc).toFixed(1)}%</b> (${sgn(totD)}${num(totD)}) to ${num(totL)}, versus ${fmtLong(dates[p])}. `;
+  t+=`${up} of ${rows.length} companies drew inflows${dn?` and ${dn} saw outflows`:''}. `;
+  if(lead&&lead.pc!=null) t+=`<b>${lead.s.name}</b> led at ${pct(lead.pc)}`;
+  if(lag&&lag.pc!=null&&lag.pc<0) t+=`${lead&&lead.pc!=null?', while ':''}<b>${lag.s.name}</b> lagged at ${pct(lag.pc)}`;
+  t+='. ';
+  if(gain&&gain.d>0) t+=`Biggest accumulation: ${gain.s.name} (${sgn(gain.d)}${num(gain.d)})`;
+  if(loss&&loss.d<0) t+=`${gain&&gain.d>0?'; largest reduction: ':'Largest reduction: '}${loss.s.name} (${sgn(loss.d)}${num(loss.d)})`;
+  t+='.';
+  if((dates[j]==='2025-02'||dates[j]==='2026-04')&&dm==='raw') t+=` <span class="neg">Note: partial-data month in the raw file — switch to Cleaned.</span>`;
+  document.getElementById('cmWrapText').innerHTML=t;
+  document.getElementById('cmStat').innerHTML=[
+    ['Theme holding',num(totL),''],['Net change',sgn(totD)+num(totD),totD>=0?'pos':'neg'],
+    ['% change',pct(totPc),totPc>=0?'pos':'neg'],['Companies up / down',up+' / '+dn,'']
+  ].map(s=>`<div class="b"><div class="t">${s[0]}</div><div class="v ${s[2]}">${s[1]}</div></div>`).join('');
+  const cr=rows.filter(r=>r.pc!=null);
+  const labels=cr.map(r=>r.s.name),vals=cr.map(r=>+r.pc.toFixed(2)),cols=cr.map(r=>r.pc>=0?'#0f9d58':'#d93025');
+  const cfg={type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:cols,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      onClick:(evt,els)=>{if(els.length)openCompany(cr[els[0].index].s.code);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>pct(c.parsed.x)}}},
+      scales:{x:{grid:{color:'#eef0f3'},ticks:{callback:v=>v+'%',font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:11}}}}}};
+  if(cmChart)cmChart.destroy();
+  cmChart=new Chart(document.getElementById('cmChart'),cfg);
+  let h='<thead><tr><th>Company</th><th>Holding</th><th>Δ</th><th>MoM %</th></tr></thead><tbody>';
+  rows.forEach(r=>{h+=`<tr class="clk" data-code="${r.s.code}" style="cursor:pointer"><td>${r.s.full||r.s.name} <span class="tag">${r.s.code}</span></td><td>${num(r.lv)}</td><td class="${r.d>=0?'pos':'neg'}">${sgn(r.d)}${num(Math.abs(r.d))}</td><td class="${r.d>=0?'pos':'neg'}">${r.pc==null?'new':pct(r.pc)}</td></tr>`;});
+  document.getElementById('cmTable').innerHTML=h+'</tbody>';
 }
 function drawCompanyChart(members){
   const W=windowIdx(),base=W[0],f=stField(),labels=W.map(j=>fmtDate(dates[j]));
@@ -599,7 +666,11 @@ document.getElementById('cPrev').addEventListener('click',()=>{const i=THEMES.in
 document.getElementById('cNext').addEventListener('click',()=>{const i=THEMES.indexOf(compTheme);if(i<THEMES.length-1){compTheme=THEMES[i+1];fillThemeSel();renderCompanies();}});
 document.getElementById('cTable').addEventListener('click',e=>{const tr=e.target.closest('tr.clk');if(tr)openCompany(tr.dataset.code);});
 document.getElementById('cHeat').addEventListener('click',e=>{const td=e.target.closest('td.cclk');if(td)openCompany(td.dataset.code);});
-compTheme=THEMES[0]; fillThemeSel();
+document.getElementById('cmSel').addEventListener('change',e=>{cMonthIdx=+e.target.value;renderCompanyMonth();});
+document.getElementById('cmPrev').addEventListener('click',()=>{if(cMonthIdx>1){cMonthIdx--;fillCMonthSel();renderCompanyMonth();}});
+document.getElementById('cmNext').addEventListener('click',()=>{if(cMonthIdx<dates.length-1){cMonthIdx++;fillCMonthSel();renderCompanyMonth();}});
+document.getElementById('cmTable').addEventListener('click',e=>{const tr=e.target.closest('tr.clk');if(tr)openCompany(tr.dataset.code);});
+compTheme=THEMES[0]; fillThemeSel(); fillCMonthSel();
 fillMonthSel();
 document.getElementById('heat').addEventListener('click',e=>{const td=e.target.closest('td.cell');if(td)openCell(td.dataset.k,+td.dataset.j);});
 document.getElementById('mTable').addEventListener('click',e=>{const tr=e.target.closest('tr.clk');if(tr)openCell(tr.dataset.k,monthIdx);});
